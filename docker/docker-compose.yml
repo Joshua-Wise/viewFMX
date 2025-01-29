@@ -1,0 +1,22 @@
+version: '3.8'
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      args:
+        - GOFMX_TOKEN=${GOFMX_TOKEN}
+        - NGINX_PROXY_PASS=${NGINX_PROXY_PASS}
+        - NGINX_PROXY_HOST=${NGINX_PROXY_HOST}
+        - VITE_GOFMX_STATUS=${VITE_GOFMX_STATUS}
+        - VITE_API_BASE_URL=${VITE_API_BASE_URL}
+    ports:
+      - "3000:80"
+    env_file:
+      - ../.env
+    environment:
+      - GOFMX_TOKEN=${GOFMX_TOKEN}
+      - NGINX_PROXY_PASS=${NGINX_PROXY_PASS}
+      - NGINX_PROXY_HOST=${NGINX_PROXY_HOST}
+      - VITE_GOFMX_STATUS=${VITE_GOFMX_STATUS}
+      - VITE_API_BASE_URL=${VITE_API_BASE_URL}
