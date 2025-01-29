@@ -2,6 +2,8 @@
 
 viewFMX is an at-a-glance calendar view web app that makes use of the FMX API for event data.
 
+![screenshot](https://github.com/Joshua-Wise/viewFMX/blob/main/screenshots/mockup.png?raw=true)
+
 ## Features
 
 - Displays current and upcoming events
