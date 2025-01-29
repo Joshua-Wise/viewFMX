@@ -1,6 +1,6 @@
 # viewFMX
 
-viewFMX is an at-a-glance calendar view web app that makes use of the goFMX API for event data.
+viewFMX is an at-a-glance calendar view web app that makes use of the FMX API for event data.
 
 ## Features
 
@@ -64,10 +64,6 @@ docker compose -f docker/docker-compose.yml --env-file .env up -d
 
 Visit your-ip:3000 in a web browser | select building and resource
 
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
 ## Notice
 
-This connector is not an official FMX product and is developed independently. I am not affiliated with or employed by FMX. It is provided "as-is" with no warranty or guarantee of functionality.
+This project is not an official FMX product and is developed independently. I am not affiliated with or employed by FMX. It is provided "as-is" with no warranty or guarantee of functionality.

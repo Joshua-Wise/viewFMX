@@ -223,7 +223,7 @@ const CalendarDisplay = () => {
 
           {/* Rest of your component JSX remains the same */}
           <div className="grid grid-cols-1 md:grid-cols-2">
-            <div className="bg-orange-600 p-8 text-white">
+            <div className="bg-gray-600 p-8 text-white">
               <div className="text-lg font-semibold mb-4">
                 {currentEvent ? 'Current meeting' : 'Available'}
               </div>
