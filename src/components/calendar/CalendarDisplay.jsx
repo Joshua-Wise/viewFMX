@@ -221,10 +221,9 @@ const CalendarDisplay = () => {
             </div>
           </div>
 
-          {/* Rest of your component JSX remains the same */}
           <div className="grid grid-cols-1 md:grid-cols-2 h-[50vh]">
             <div className="bg-gray-600 p-8 text-white overflow-y-auto">
-              <div className="text-lg font-semibold mb-4">
+              <div className="text-xl font-semibold mb-4">
                 {currentEvent ? 'Current meeting' : 'Available'}
               </div>
               {currentEvent && (
@@ -241,7 +240,7 @@ const CalendarDisplay = () => {
 
             {nextEvent && (
               <div className="bg-gray-500 p-8 text-white overflow-y-auto">
-                <div className="text-lg font-semibold mb-4">Next meeting</div>
+                <div className="text-xl font-semibold mb-4">Next meeting</div>
                 <div className="text-2xl font-medium mb-2">
                   {nextEvent.title}
                 </div>
