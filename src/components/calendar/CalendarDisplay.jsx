@@ -196,9 +196,9 @@ const CalendarDisplay = () => {
           fetchEvents(); // Refresh events after settings are updated
         }} />
       ) : (
-        <div className="min-h-screen bg-gray-300">
-          <div className="bg-gray-300 p-6">
-            <div className="flex justify-between items-center">
+        <div className="h-screen bg-gray-300 flex flex-col overflow-hidden">
+          <div className="bg-gray-300 p-6 h-[20vh] flex items-center">
+            <div className="flex justify-between items-center w-full">
               <div>
                 <h1 className="text-2xl font-semibold text-gray-900">{resourceName}</h1>
                 <p className="text-gray-600">{quote}</p>
@@ -222,8 +222,8 @@ const CalendarDisplay = () => {
           </div>
 
           {/* Rest of your component JSX remains the same */}
-          <div className="grid grid-cols-1 md:grid-cols-2">
-            <div className="bg-gray-600 p-8 text-white">
+          <div className="grid grid-cols-1 md:grid-cols-2 h-[50vh]">
+            <div className="bg-gray-600 p-8 text-white overflow-y-auto">
               <div className="text-lg font-semibold mb-4">
                 {currentEvent ? 'Current meeting' : 'Available'}
               </div>
@@ -240,7 +240,7 @@ const CalendarDisplay = () => {
             </div>
 
             {nextEvent && (
-              <div className="bg-gray-500 p-8 text-white">
+              <div className="bg-gray-500 p-8 text-white overflow-y-auto">
                 <div className="text-lg font-semibold mb-4">Next meeting</div>
                 <div className="text-2xl font-medium mb-2">
                   {nextEvent.title}
@@ -255,12 +255,12 @@ const CalendarDisplay = () => {
             )}
           </div>
 
-          <div className="flex flex-row">
+          <div className="flex flex-row h-[30vh] overflow-x-auto">
             {events.slice(currentEvent ? 1 : 0).map((event) => 
               event !== nextEvent && (
                 <div
                   key={event.id}
-                  className="flex-1 bg-gray-300 p-6 border-t border-gray-200"
+                  className="flex-1 min-w-[200px] bg-gray-300 p-6 border-t border-gray-200"
                 >
                   <div className="font-medium text-gray-900 mb-2">{event.title}</div>
                   <div className="text-sm text-gray-600">
