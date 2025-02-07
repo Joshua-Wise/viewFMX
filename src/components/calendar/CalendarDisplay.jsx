@@ -155,10 +155,27 @@ const CalendarDisplay = () => {
     if (!events.length) return null;
     
     const now = new Date();
-    return events.find(event => {
-      const startTime = new Date(event.startTime);
-      return now < startTime;
-    });
+    const currentEvent = getCurrentEvent();
+    
+    // Sort events by start time and find the next occurrence
+    return events
+      .filter(event => {
+        // Skip the current event
+        if (currentEvent && event.id === currentEvent.id) {
+          return false;
+        }
+        
+        const startTime = new Date(event.startTime);
+        // For recurring events, we only care about the start time being in the future
+        // For non-recurring events, we also check that they haven't ended
+        if (event.frequency && event.frequency !== 'Never') {
+          return startTime > now;
+        } else {
+          const endTime = new Date(event.endTime);
+          return now < endTime;
+        }
+      })
+      .sort((a, b) => new Date(a.startTime) - new Date(b.startTime))[0] || null;
   };
 
   if (loading) return <div className="h-screen w-screen bg-white p-4">Loading events...</div>;
@@ -238,20 +255,24 @@ const CalendarDisplay = () => {
               )}
             </div>
 
-            {nextEvent && (
-              <div className="bg-gray-500 p-8 text-white overflow-y-auto">
-                <div className="text-xl font-semibold mb-4">Next meeting</div>
-                <div className="text-2xl font-medium mb-2">
-                  {nextEvent.title}
-                </div>
-                <div className="text-gray-300">
-                  {formatDate(nextEvent.startTime)}
-                </div>
-                <div className="text-xl mt-1">
-                  {formatTime(nextEvent.startTime)}-{formatTime(nextEvent.endTime)}
-                </div>
-              </div>
-            )}
+            <div className="bg-gray-500 p-8 text-white overflow-y-auto">
+              <div className="text-xl font-semibold mb-4">Next meeting</div>
+              {nextEvent ? (
+                <>
+                  <div className="text-2xl font-medium mb-2">
+                    {nextEvent.title}
+                  </div>
+                  <div className="text-gray-300">
+                    {formatDate(nextEvent.startTime)}
+                  </div>
+                  <div className="text-xl mt-1">
+                    {formatTime(nextEvent.startTime)}-{formatTime(nextEvent.endTime)}
+                  </div>
+                </>
+              ) : (
+                <div className="text-xl">No upcoming meetings</div>
+              )}
+            </div>
           </div>
 
           <div className="flex flex-row h-[30vh] overflow-x-auto">

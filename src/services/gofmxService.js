@@ -104,18 +104,20 @@ class GoFMXService {
   }
 
   getNextWeeklyOccurrence(event) {
-    const today = new Date();
+    const now = new Date();
+    const today = new Date(now);
     today.setUTCHours(0, 0, 0, 0);
   
     const thirtyDaysOut = new Date(today);
-    thirtyDaysOut.setDate(today.getDate() + 30);
+    thirtyDaysOut.setDate(thirtyDaysOut.getDate() + 30);
     thirtyDaysOut.setUTCHours(23, 59, 59, 999);
   
     const firstOccurrence = new Date(event.firstOccurrenceEventTimeBlock.startTimeUtc + 'Z');
+    const eventEndTime = new Date(event.firstOccurrenceEventTimeBlock.endTimeUtc + 'Z');
     
-    // Don't return any dates before the first occurrence
-    const startDate = firstOccurrence > today ? firstOccurrence : today;
-  
+    // Calculate event duration for later use
+    const duration = eventEndTime - firstOccurrence;
+    
     const dayMap = {
       'Sunday': 0, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3,
       'Thursday': 4, 'Friday': 5, 'Saturday': 6
@@ -124,34 +126,57 @@ class GoFMXService {
     const targetDay = dayMap[event.schedule.weeklyDaysOfWeek[0]];
     const eventTime = new Date(event.firstOccurrenceEventTimeBlock.startTimeUtc + 'Z');
     
-    // Start from the appropriate date
-    let currentDate = new Date(startDate);
+    // Start from today
+    let currentDate = new Date(today);
     
-    // Find the next occurrence of the target day
+    // If it's the target day and the event hasn't started yet, we can use today
+    if (currentDate.getUTCDay() === targetDay) {
+      const todayOccurrence = new Date(currentDate);
+      todayOccurrence.setUTCHours(eventTime.getUTCHours());
+      todayOccurrence.setUTCMinutes(eventTime.getUTCMinutes());
+      
+      // Add one hour to adjust for the bug
+      const adjustedTodayOccurrence = this.adjustEventTime(todayOccurrence);
+      
+      // If the event hasn't started yet today, we can use it
+      if (adjustedTodayOccurrence > now && adjustedTodayOccurrence >= firstOccurrence) {
+        return adjustedTodayOccurrence.toISOString();
+      }
+      
+      // If we're on the target day but the event has ended, skip to next week
+      currentDate.setDate(currentDate.getDate() + 7);
+    } else {
+      // Find the next occurrence of the target day
+      while (currentDate.getUTCDay() !== targetDay && currentDate <= thirtyDaysOut) {
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+    }
+    
+    // Find the next valid occurrence
     while (currentDate <= thirtyDaysOut) {
-      if (currentDate.getUTCDay() === targetDay) {
-        // Check terminal end date if it exists
-        if (event.schedule.terminal === 'On date') {
-          const endDate = new Date(event.schedule.terminalEndDate + 'Z');
-          if (currentDate > endDate) {
-            return null;
-          }
-        }
-        
-        // Create the next occurrence with the original event time plus one hour
-        const nextOccurrence = new Date(currentDate);
-        nextOccurrence.setUTCHours(eventTime.getUTCHours());
-        nextOccurrence.setUTCMinutes(eventTime.getUTCMinutes());
-        
-        // Add one hour to adjust for the bug
-        const adjustedOccurrence = this.adjustEventTime(nextOccurrence);
-        
-        // Only return if it's after the first occurrence
-        if (adjustedOccurrence >= firstOccurrence && adjustedOccurrence >= today) {
-          return adjustedOccurrence.toISOString();
+      // Check terminal end date if it exists
+      if (event.schedule.terminal === 'On date') {
+        const endDate = new Date(event.schedule.terminalEndDate + 'Z');
+        if (currentDate > endDate) {
+          return null;
         }
       }
-      currentDate.setDate(currentDate.getDate() + 1);
+      
+      // Create the next occurrence with the original event time
+      const nextOccurrence = new Date(currentDate);
+      nextOccurrence.setUTCHours(eventTime.getUTCHours());
+      nextOccurrence.setUTCMinutes(eventTime.getUTCMinutes());
+      
+      // Add one hour to adjust for the bug
+      const adjustedOccurrence = this.adjustEventTime(nextOccurrence);
+      
+      // Check if this occurrence is valid
+      if (adjustedOccurrence >= firstOccurrence && adjustedOccurrence > now) {
+        return adjustedOccurrence.toISOString();
+      }
+      
+      // Move to next week
+      currentDate.setDate(currentDate.getDate() + 7);
     }
   
     return null;
