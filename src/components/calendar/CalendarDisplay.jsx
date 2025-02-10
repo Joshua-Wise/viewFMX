@@ -1,7 +1,5 @@
-// src/components/calendar/CalendarDisplay.jsx
-// src/components/calendar/CalendarDisplay.jsx
 import React, { useState, useEffect } from 'react';
-import { Settings as SettingsIcon } from 'lucide-react';
+import { Settings as SettingsIcon, Plus } from 'lucide-react';
 import gofmxService from '../../services/gofmxService';
 import { getRandomQuote } from '../../constants/quotes';
 import Settings from '../../components/settings/settings';
@@ -13,6 +11,8 @@ const CalendarDisplay = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [showQuickMeeting, setShowQuickMeeting] = useState(false);
+  const [isCreatingMeeting, setIsCreatingMeeting] = useState(false);
 
   const filterNextWeekEvents = (events) => {
     if (!Array.isArray(events)) {
@@ -178,6 +178,33 @@ const CalendarDisplay = () => {
       .sort((a, b) => new Date(a.startTime) - new Date(b.startTime))[0] || null;
   };
 
+  const canCreateMeeting = (duration) => {
+    const nextEvent = getNextEvent();
+    if (!nextEvent) return true;
+
+    const now = new Date();
+    const meetingEnd = new Date(now.getTime() + duration * 60000);
+    const nextEventStart = new Date(nextEvent.startTime);
+
+    return meetingEnd < nextEventStart;
+  };
+
+  const handleCreateMeeting = async (duration) => {
+    if (!canCreateMeeting(duration)) return;
+
+    try {
+      setIsCreatingMeeting(true);
+      await gofmxService.createImpromptuMeeting(duration);
+      setShowQuickMeeting(false);
+      fetchEvents(); // Refresh the events list
+    } catch (error) {
+      console.error('Error creating meeting:', error);
+      setError('Failed to create meeting: ' + error.message);
+    } finally {
+      setIsCreatingMeeting(false);
+    }
+  };
+
   if (loading) return <div className="h-screen w-screen bg-white p-4">Loading events...</div>;
   
   if (error) {
@@ -239,10 +266,54 @@ const CalendarDisplay = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 h-[50vh]">
-            <div className="bg-gray-600 p-8 text-white overflow-y-auto">
+            <div className="bg-gray-600 p-8 text-white overflow-y-auto relative">
               <div className="text-xl font-semibold mb-4">
-                {currentEvent ? 'Current meeting' : 'Available'}
+                <span>{currentEvent ? 'Current meeting' : 'Available'}</span>
               </div>
+              {!currentEvent && (
+                <button
+                  onClick={() => setShowQuickMeeting(true)}
+                  className="bg-white text-gray-600 rounded-full p-4 hover:bg-gray-100 transition-colors absolute bottom-8 right-8"
+                  title="Create quick meeting"
+                >
+                  <Plus className="h-6 w-6" />
+                </button>
+              )}
+              {showQuickMeeting && !currentEvent && (
+                <div className="bg-white rounded-lg p-4 mb-4 shadow-lg">
+                  <div className="text-gray-700 font-medium mb-3">Schedule a Quick Meeting:</div>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => handleCreateMeeting(30)}
+                      disabled={!canCreateMeeting(30) || isCreatingMeeting}
+                      className={`flex-1 py-2 px-4 rounded ${
+                        canCreateMeeting(30) && !isCreatingMeeting
+                          ? 'bg-blue-500 hover:bg-blue-600 text-white'
+                          : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      }`}
+                    >
+                      30 Minutes
+                    </button>
+                    <button
+                      onClick={() => handleCreateMeeting(60)}
+                      disabled={!canCreateMeeting(60) || isCreatingMeeting}
+                      className={`flex-1 py-2 px-4 rounded ${
+                        canCreateMeeting(60) && !isCreatingMeeting
+                          ? 'bg-blue-500 hover:bg-blue-600 text-white'
+                          : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      }`}
+                    >
+                      1 Hour
+                    </button>
+                  </div>
+                  <button
+                    onClick={() => setShowQuickMeeting(false)}
+                    className="bg-gray-100 w-full mt-2 py-1 text-gray-500 hover:text-gray-700"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
               {currentEvent && (
                 <>
                   <div className="text-2xl font-medium mb-2">

@@ -151,7 +151,7 @@ const Settings = ({ onClose }) => {
           </div>
           <button
             onClick={handleCancel}
-            className="text-white hover:text-gray-300"
+            className="text-white bg-gray-900 bg-opacity-50 hover:text-gray-300"
             title="Close"
           >
             <X className="h-6 w-6" />

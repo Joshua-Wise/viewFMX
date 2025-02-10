@@ -1,7 +1,6 @@
 class GoFMXService {
   constructor() {
     this.baseUrl = import.meta.env.VITE_API_BASE_URL || '/api/v1';
-    this.token = import.meta.env.VITE_GOFMX_TOKEN;
     this.status = import.meta.env.VITE_GOFMX_STATUS || 'FinalizedUpcoming';
   }
 
@@ -33,9 +32,11 @@ class GoFMXService {
     try {
       const response = await fetch(url, {
         ...options,
-        method: 'GET',
+        method: options.method || 'GET',
         headers: {
-          'Accept': 'application/json'
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          ...options.headers
         }
       });
 
@@ -321,6 +322,75 @@ class GoFMXService {
     } catch (error) {
       console.error('Error in transformScheduleData:', error);
       return [];
+    }
+  }
+  async createImpromptuMeeting(duration) {
+    try {
+      const buildingId = this.getBuildingId();
+      const resourceId = this.getResourceId();
+      
+      const startTime = new Date();
+      const endTime = new Date(startTime.getTime() + duration * 60000); // Convert minutes to milliseconds
+
+      const requestData = {
+        name: "Quick Meeting",
+        requestTypeID: 295769,
+        buildingIDs: [parseInt(buildingId)],
+        resourceQuantities: [
+          {
+            resourceID: parseInt(resourceId)
+          }
+        ],
+        schedule: {
+          frequency: "Never",
+          interval: 1,
+          terminalEndDate: endTime.toISOString(),
+          customOccurrenceDates: [startTime.toISOString()]
+        },
+        firstOccurrenceEventTimeBlock: {
+          startTimeUtc: startTime.toISOString(),
+          endTimeUtc: endTime.toISOString()
+        },
+        isPrivate: true,
+        customFields: [
+          {
+            customFieldID: 585349,
+            name: "00: Number of Attendees",
+            value: 1
+          },
+          {
+            customFieldID: 593873,
+            name: "Additional Details",
+            value: "No"
+          },
+          {
+            customFieldID: 587658,
+            name: "03. Technology Resources",
+            value: "No"
+          },
+          {
+            customFieldID: 593550,
+            name: "002: Facility Resources",
+            value: "No"
+          },
+          {
+            customFieldID: 593873,
+            name: "Additional Details",
+            value: "No"
+          }
+        ]
+      };
+
+      const endpoint = 'scheduling/requests?conflictResolutionMode=ExcludeConflicts';
+      const response = await this.makeRequest(endpoint, {
+        method: 'POST',
+        body: JSON.stringify(requestData)
+      });
+
+      return response;
+    } catch (error) {
+      console.error('createImpromptuMeeting error:', error);
+      throw error;
     }
   }
 }
