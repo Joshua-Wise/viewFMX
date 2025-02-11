@@ -15,10 +15,7 @@ const CalendarDisplay = () => {
   const [isCreatingMeeting, setIsCreatingMeeting] = useState(false);
 
   const filterNextWeekEvents = (events) => {
-    if (!Array.isArray(events)) {
-      console.warn('filterNextWeekEvents received non-array:', events);
-      return [];
-    }
+    if (!Array.isArray(events)) return [];
 
     const today = new Date();
     today.setUTCHours(0, 0, 0, 0);
@@ -26,62 +23,26 @@ const CalendarDisplay = () => {
     const nextWeek = new Date(today);
     nextWeek.setDate(today.getDate() + 7);
     nextWeek.setUTCHours(23, 59, 59, 999);
-    
-    console.log("Date Range:", {
-      today: today.toISOString(),
-      nextWeek: nextWeek.toISOString()
-    });
   
     return events.filter(event => {
-      if (!event?.startTime) {
-        console.warn('Event missing startTime:', event);
-        return false;
-      }
-
+      if (!event?.startTime) return false;
       const eventDate = new Date(event.startTime);
-      const inRange = eventDate >= today && eventDate <= nextWeek;
-      
-      console.log("Event Debug:", {
-        title: event.title,
-        startTime: event.startTime,
-        parsedDate: eventDate.toISOString(),
-        today: today.toISOString(),
-        nextWeek: nextWeek.toISOString(),
-        isAfterToday: eventDate >= today,
-        isBeforeNextWeek: eventDate <= nextWeek,
-        inRange: inRange
-      });
-      
-      return inRange;
+      return eventDate >= today && eventDate <= nextWeek;
     });
   };
 
   const fetchEvents = async () => {
     try {
-      console.log('Starting fetchEvents...');
       const [schedule, name] = await Promise.all([
-        gofmxService.getSchedule().catch(err => {
-          console.error('Error fetching schedule:', err);
-          throw err;
-        }),
-        gofmxService.getResourceDetails().catch(err => {
-          console.error('Error fetching resource details:', err);
-          throw err;
-        })
+        gofmxService.getSchedule(),
+        gofmxService.getResourceDetails()
       ]);
       
-      console.log("Raw schedule:", schedule);
-      console.log("Resource name:", name);
-      
-      const filteredEvents = filterNextWeekEvents(schedule);
-      console.log("Filtered events:", filteredEvents);
-      
-      setEvents(filteredEvents);
+      setEvents(filterNextWeekEvents(schedule));
       setResourceName(name || 'Conference Room');
       setQuote(getRandomQuote());
       setError(null);
     } catch (err) {
-      console.error('Error in fetchEvents:', err);
       setError('Failed to fetch calendar events. ' + err.message);
     } finally {
       setLoading(false);
@@ -96,22 +57,17 @@ const CalendarDisplay = () => {
     if (!utcTime) return '';
   
     try {
-      const timeStr = utcTime.endsWith('Z') ? utcTime : utcTime + 'Z';
-      const date = new Date(timeStr);
+      // Ensure UTC time string has 'Z' suffix for proper UTC parsing
+      const timeString = utcTime.endsWith('Z') ? utcTime : utcTime + 'Z';
       
-      if (isNaN(date.getTime())) {
-        console.error('Invalid date created from:', utcTime);
-        return '';
-      }
-  
+      // Create a Date object from the UTC time string and format in Chicago timezone
       return new Intl.DateTimeFormat('en-US', {
         hour: 'numeric',
         minute: '2-digit',
         hour12: true,
         timeZone: 'America/Chicago'
-      }).format(date);
-    } catch (error) {
-      console.error('Error formatting time:', error);
+      }).format(new Date(timeString));
+    } catch {
       return '';
     }
   };
@@ -120,11 +76,9 @@ const CalendarDisplay = () => {
     if (!utcTime) return '';
   
     try {
-      const timeStr = utcTime.endsWith('Z') ? utcTime : utcTime + 'Z';
-      const date = new Date(timeStr);
+      const date = new Date(utcTime);
       
       if (isNaN(date.getTime())) {
-        console.error('Invalid date created from:', utcTime);
         return 'Invalid Date';
       }
   
@@ -134,8 +88,7 @@ const CalendarDisplay = () => {
         year: 'numeric',
         timeZone: 'America/Chicago'
       }).format(date);
-    } catch (error) {
-      console.error('Error formatting date:', error);
+    } catch {
       return 'Invalid Date';
     }
   };
@@ -198,7 +151,6 @@ const CalendarDisplay = () => {
       setShowQuickMeeting(false);
       fetchEvents(); // Refresh the events list
     } catch (error) {
-      console.error('Error creating meeting:', error);
       setError('Failed to create meeting: ' + error.message);
     } finally {
       setIsCreatingMeeting(false);
@@ -256,10 +208,7 @@ const CalendarDisplay = () => {
                   src="/logo.png" 
                   alt="District Logo" 
                   className="w-full h-auto object-contain"
-                  onError={(e) => {
-                    console.log('Logo failed to load, hiding image');
-                    e.target.style.display = 'none';
-                  }}
+                  onError={(e) => e.target.style.display = 'none'}
                 />
               </button>
             </div>

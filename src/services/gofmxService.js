@@ -97,13 +97,6 @@ class GoFMXService {
     }
   }
 
-  adjustEventTime(date) {
-    // Add one hour to the time
-    const adjustedDate = new Date(date);
-    adjustedDate.setHours(adjustedDate.getHours() + 1);
-    return adjustedDate;
-  }
-
   getNextWeeklyOccurrence(event) {
     const now = new Date();
     const today = new Date(now);
@@ -113,8 +106,16 @@ class GoFMXService {
     thirtyDaysOut.setDate(thirtyDaysOut.getDate() + 30);
     thirtyDaysOut.setUTCHours(23, 59, 59, 999);
   
-    const firstOccurrence = new Date(event.firstOccurrenceEventTimeBlock.startTimeUtc + 'Z');
-    const eventEndTime = new Date(event.firstOccurrenceEventTimeBlock.endTimeUtc + 'Z');
+    // Ensure UTC time strings have 'Z' suffix
+    const startUtc = event.firstOccurrenceEventTimeBlock.startTimeUtc.endsWith('Z') 
+      ? event.firstOccurrenceEventTimeBlock.startTimeUtc 
+      : event.firstOccurrenceEventTimeBlock.startTimeUtc + 'Z';
+    const endUtc = event.firstOccurrenceEventTimeBlock.endTimeUtc.endsWith('Z')
+      ? event.firstOccurrenceEventTimeBlock.endTimeUtc
+      : event.firstOccurrenceEventTimeBlock.endTimeUtc + 'Z';
+    
+    const firstOccurrence = new Date(startUtc);
+    const eventEndTime = new Date(endUtc);
     
     // Calculate event duration for later use
     const duration = eventEndTime - firstOccurrence;
@@ -125,7 +126,7 @@ class GoFMXService {
     };
   
     const targetDay = dayMap[event.schedule.weeklyDaysOfWeek[0]];
-    const eventTime = new Date(event.firstOccurrenceEventTimeBlock.startTimeUtc + 'Z');
+    const eventTime = new Date(startUtc);
     
     // Start from today
     let currentDate = new Date(today);
@@ -133,15 +134,17 @@ class GoFMXService {
     // If it's the target day and the event hasn't started yet, we can use today
     if (currentDate.getUTCDay() === targetDay) {
       const todayOccurrence = new Date(currentDate);
-      todayOccurrence.setUTCHours(eventTime.getUTCHours());
-      todayOccurrence.setUTCMinutes(eventTime.getUTCMinutes());
-      
-      // Add one hour to adjust for the bug
-      const adjustedTodayOccurrence = this.adjustEventTime(todayOccurrence);
+      // Set the date part only, keeping the original UTC time
+      todayOccurrence.setUTCFullYear(currentDate.getUTCFullYear());
+      todayOccurrence.setUTCMonth(currentDate.getUTCMonth());
+      todayOccurrence.setUTCDate(currentDate.getUTCDate());
+      // Set the time part from the original event
+      todayOccurrence.setUTCHours(firstOccurrence.getUTCHours());
+      todayOccurrence.setUTCMinutes(firstOccurrence.getUTCMinutes());
       
       // If the event hasn't started yet today, we can use it
-      if (adjustedTodayOccurrence > now && adjustedTodayOccurrence >= firstOccurrence) {
-        return adjustedTodayOccurrence.toISOString();
+      if (todayOccurrence > now && todayOccurrence >= firstOccurrence) {
+        return todayOccurrence.toISOString();
       }
       
       // If we're on the target day but the event has ended, skip to next week
@@ -163,17 +166,19 @@ class GoFMXService {
         }
       }
       
-      // Create the next occurrence with the original event time
+      // Create the next occurrence preserving the original UTC time
       const nextOccurrence = new Date(currentDate);
-      nextOccurrence.setUTCHours(eventTime.getUTCHours());
-      nextOccurrence.setUTCMinutes(eventTime.getUTCMinutes());
-      
-      // Add one hour to adjust for the bug
-      const adjustedOccurrence = this.adjustEventTime(nextOccurrence);
+      // Set the date part only, keeping the original UTC time
+      nextOccurrence.setUTCFullYear(currentDate.getUTCFullYear());
+      nextOccurrence.setUTCMonth(currentDate.getUTCMonth());
+      nextOccurrence.setUTCDate(currentDate.getUTCDate());
+      // Set the time part from the original event
+      nextOccurrence.setUTCHours(firstOccurrence.getUTCHours());
+      nextOccurrence.setUTCMinutes(firstOccurrence.getUTCMinutes());
       
       // Check if this occurrence is valid
-      if (adjustedOccurrence >= firstOccurrence && adjustedOccurrence > now) {
-        return adjustedOccurrence.toISOString();
+      if (nextOccurrence >= firstOccurrence && nextOccurrence > now) {
+        return nextOccurrence.toISOString();
       }
       
       // Move to next week
@@ -200,10 +205,7 @@ class GoFMXService {
         occurrenceDate.setUTCHours(eventTime.getUTCHours());
         occurrenceDate.setUTCMinutes(eventTime.getUTCMinutes());
         
-        // Add one hour to adjust for the bug
-        const adjustedDate = this.adjustEventTime(occurrenceDate);
-        
-        return adjustedDate >= today && adjustedDate <= thirtyDaysOut;
+        return occurrenceDate >= today && occurrenceDate <= thirtyDaysOut;
       });
   
       if (nextDate) {
@@ -212,9 +214,7 @@ class GoFMXService {
         nextOccurrence.setUTCHours(eventTime.getUTCHours());
         nextOccurrence.setUTCMinutes(eventTime.getUTCMinutes());
         
-        // Add one hour to adjust for the bug
-        const adjustedOccurrence = this.adjustEventTime(nextOccurrence);
-        return adjustedOccurrence.toISOString();
+        return nextOccurrence.toISOString();
       }
     }
   
@@ -246,15 +246,39 @@ class GoFMXService {
   
         // For one-time events, ensure we append 'Z' and handle times directly
         if (event.schedule?.frequency === 'Never') {
-          startTime = startTime + 'Z';
-          endTime = endTime + 'Z';
+          // Ensure UTC time strings have 'Z' suffix
+          startTime = startTime.endsWith('Z') ? startTime : startTime + 'Z';
+          endTime = endTime.endsWith('Z') ? endTime : endTime + 'Z';
           
           console.log(`Processing one-time event: ${event.name} at ${startTime}`);
         }
         // Handle weekly events
         else if (event.schedule?.frequency === 'Weekly' && 
             event.schedule.weeklyDaysOfWeek?.length > 0) {
-          startTime = this.getNextWeeklyOccurrence(event);
+          // Ensure UTC time strings have 'Z' suffix for weekly events
+          const startUtc = event.firstOccurrenceEventTimeBlock.startTimeUtc.endsWith('Z') 
+            ? event.firstOccurrenceEventTimeBlock.startTimeUtc 
+            : event.firstOccurrenceEventTimeBlock.startTimeUtc + 'Z';
+          const endUtc = event.firstOccurrenceEventTimeBlock.endTimeUtc.endsWith('Z')
+            ? event.firstOccurrenceEventTimeBlock.endTimeUtc
+            : event.firstOccurrenceEventTimeBlock.endTimeUtc + 'Z';
+          
+          // Create a deep copy of the event with the corrected UTC times
+          const eventCopy = {
+            ...event,
+            name: event.name,
+            schedule: {
+              ...event.schedule,
+              weeklyDaysOfWeek: [...event.schedule.weeklyDaysOfWeek]
+            },
+            firstOccurrenceEventTimeBlock: {
+              ...event.firstOccurrenceEventTimeBlock,
+              startTimeUtc: startUtc,
+              endTimeUtc: endUtc
+            }
+          };
+          
+          startTime = this.getNextWeeklyOccurrence(eventCopy);
           
           if (startTime) {
             const originalStart = new Date(event.firstOccurrenceEventTimeBlock.startTimeUtc + 'Z');
@@ -262,6 +286,7 @@ class GoFMXService {
             const duration = originalEnd - originalStart;
             const newEnd = new Date(new Date(startTime).getTime() + duration);
             endTime = newEnd.toISOString();
+
           } else {
             console.log(`No upcoming occurrences found for weekly event: ${event.name}`);
             return;
