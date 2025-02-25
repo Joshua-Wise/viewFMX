@@ -97,7 +97,7 @@ class GoFMXService {
     }
   }
 
-  getNextWeeklyOccurrence(event) {
+  getNextWeeklyOccurrence(event, includeCurrentOccurrence = false) {
     const now = new Date();
     const today = new Date(now);
     today.setUTCHours(0, 0, 0, 0);
@@ -131,7 +131,7 @@ class GoFMXService {
     // Start from today
     let currentDate = new Date(today);
     
-    // If it's the target day and the event hasn't started yet, we can use today
+    // If it's the target day, check if the event is currently happening
     if (currentDate.getUTCDay() === targetDay) {
       const todayOccurrence = new Date(currentDate);
       // Set the date part only, keeping the original UTC time
@@ -141,6 +141,14 @@ class GoFMXService {
       // Set the time part from the original event
       todayOccurrence.setUTCHours(firstOccurrence.getUTCHours());
       todayOccurrence.setUTCMinutes(firstOccurrence.getUTCMinutes());
+      
+      // Calculate the end time of today's occurrence
+      const todayOccurrenceEnd = new Date(todayOccurrence.getTime() + duration);
+      
+      // If the event is currently happening and we want to include current occurrences
+      if (includeCurrentOccurrence && now >= todayOccurrence && now < todayOccurrenceEnd && todayOccurrence >= firstOccurrence) {
+        return todayOccurrence.toISOString();
+      }
       
       // If the event hasn't started yet today, we can use it
       if (todayOccurrence > now && todayOccurrence >= firstOccurrence) {
@@ -188,8 +196,9 @@ class GoFMXService {
     return null;
   }
   
-  getNextCustomOccurrence(event) {
-    const today = new Date();
+  getNextCustomOccurrence(event, includeCurrentOccurrence = false) {
+    const now = new Date();
+    const today = new Date(now);
     today.setUTCHours(0, 0, 0, 0);
   
     const thirtyDaysOut = new Date(today);
@@ -198,6 +207,28 @@ class GoFMXService {
   
     if (event.schedule.customOccurrenceDates) {
       const eventTime = new Date(event.firstOccurrenceEventTimeBlock.startTimeUtc + 'Z');
+      const eventDuration = new Date(event.firstOccurrenceEventTimeBlock.endTimeUtc + 'Z') - eventTime;
+      
+      // Check if there's a current occurrence happening now
+      if (includeCurrentOccurrence) {
+        const currentDate = event.schedule.customOccurrenceDates.find(dateStr => {
+          const occurrenceDate = new Date(dateStr + 'Z');
+          occurrenceDate.setUTCHours(eventTime.getUTCHours());
+          occurrenceDate.setUTCMinutes(eventTime.getUTCMinutes());
+          
+          const occurrenceEndTime = new Date(occurrenceDate.getTime() + eventDuration);
+          
+          return now >= occurrenceDate && now < occurrenceEndTime;
+        });
+        
+        if (currentDate) {
+          const currentOccurrence = new Date(currentDate + 'Z');
+          currentOccurrence.setUTCHours(eventTime.getUTCHours());
+          currentOccurrence.setUTCMinutes(eventTime.getUTCMinutes());
+          
+          return currentOccurrence.toISOString();
+        }
+      }
       
       // Find the next valid date
       const nextDate = event.schedule.customOccurrenceDates.find(dateStr => {
@@ -205,7 +236,7 @@ class GoFMXService {
         occurrenceDate.setUTCHours(eventTime.getUTCHours());
         occurrenceDate.setUTCMinutes(eventTime.getUTCMinutes());
         
-        return occurrenceDate >= today && occurrenceDate <= thirtyDaysOut;
+        return occurrenceDate > now && occurrenceDate <= thirtyDaysOut;
       });
   
       if (nextDate) {
@@ -229,7 +260,8 @@ class GoFMXService {
   
     try {
       const transformedEvents = [];
-      const today = new Date();
+      const now = new Date();
+      const today = new Date(now);
       today.setUTCHours(0, 0, 0, 0);
   
       data.forEach(event => {
@@ -241,27 +273,36 @@ class GoFMXService {
           return;
         }
   
-        let startTime = event.firstOccurrenceEventTimeBlock.startTimeUtc;
-        let endTime = event.firstOccurrenceEventTimeBlock.endTimeUtc;
-  
-        // For one-time events, ensure we append 'Z' and handle times directly
+        // Ensure UTC time strings have 'Z' suffix
+        const startUtc = event.firstOccurrenceEventTimeBlock.startTimeUtc.endsWith('Z') 
+          ? event.firstOccurrenceEventTimeBlock.startTimeUtc 
+          : event.firstOccurrenceEventTimeBlock.startTimeUtc + 'Z';
+        const endUtc = event.firstOccurrenceEventTimeBlock.endTimeUtc.endsWith('Z')
+          ? event.firstOccurrenceEventTimeBlock.endTimeUtc
+          : event.firstOccurrenceEventTimeBlock.endTimeUtc + 'Z';
+        
+        const originalStart = new Date(startUtc);
+        const originalEnd = new Date(endUtc);
+        const duration = originalEnd - originalStart;
+
+        // For one-time events
         if (event.schedule?.frequency === 'Never') {
-          // Ensure UTC time strings have 'Z' suffix
-          startTime = startTime.endsWith('Z') ? startTime : startTime + 'Z';
-          endTime = endTime.endsWith('Z') ? endTime : endTime + 'Z';
-          
-          console.log(`Processing one-time event: ${event.name} at ${startTime}`);
+          if (originalEnd >= today) {
+            transformedEvents.push({
+              id: `${event.id}`,
+              title: event.name,
+              startTime: startUtc,
+              endTime: endUtc,
+              date: startUtc.split('T')[0],
+              isPrivate: Boolean(event.isPrivate),
+              status: event.status || 'unknown',
+              frequency: event.schedule.frequency
+            });
+          }
         }
         // Handle weekly events
         else if (event.schedule?.frequency === 'Weekly' && 
             event.schedule.weeklyDaysOfWeek?.length > 0) {
-          // Ensure UTC time strings have 'Z' suffix for weekly events
-          const startUtc = event.firstOccurrenceEventTimeBlock.startTimeUtc.endsWith('Z') 
-            ? event.firstOccurrenceEventTimeBlock.startTimeUtc 
-            : event.firstOccurrenceEventTimeBlock.startTimeUtc + 'Z';
-          const endUtc = event.firstOccurrenceEventTimeBlock.endTimeUtc.endsWith('Z')
-            ? event.firstOccurrenceEventTimeBlock.endTimeUtc
-            : event.firstOccurrenceEventTimeBlock.endTimeUtc + 'Z';
           
           // Create a deep copy of the event with the corrected UTC times
           const eventCopy = {
@@ -277,64 +318,109 @@ class GoFMXService {
               endTimeUtc: endUtc
             }
           };
-          
-          startTime = this.getNextWeeklyOccurrence(eventCopy);
-          
-          if (startTime) {
-            const originalStart = new Date(event.firstOccurrenceEventTimeBlock.startTimeUtc + 'Z');
-            const originalEnd = new Date(event.firstOccurrenceEventTimeBlock.endTimeUtc + 'Z');
-            const duration = originalEnd - originalStart;
-            const newEnd = new Date(new Date(startTime).getTime() + duration);
-            endTime = newEnd.toISOString();
 
-          } else {
-            console.log(`No upcoming occurrences found for weekly event: ${event.name}`);
-            return;
+          // Check if the original occurrence is currently happening or upcoming
+          if (originalEnd >= now) {
+            transformedEvents.push({
+              id: `${event.id}_original`,
+              title: event.name,
+              startTime: startUtc,
+              endTime: endUtc,
+              date: startUtc.split('T')[0],
+              isPrivate: Boolean(event.isPrivate),
+              status: event.status || 'unknown',
+              frequency: event.schedule.frequency
+            });
+          }
+          
+          // Check if there's a current occurrence happening now
+          const currentStartTime = this.getNextWeeklyOccurrence(eventCopy, true);
+          if (currentStartTime && new Date(currentStartTime) <= now) {
+            const currentEndTime = new Date(new Date(currentStartTime).getTime() + duration).toISOString();
+            
+            // Only add if this is not the original occurrence
+            if (currentStartTime !== startUtc) {
+              transformedEvents.push({
+                id: `${event.id}_current`,
+                title: event.name,
+                startTime: currentStartTime,
+                endTime: currentEndTime,
+                date: currentStartTime.split('T')[0],
+                isPrivate: Boolean(event.isPrivate),
+                status: event.status || 'unknown',
+                frequency: event.schedule.frequency
+              });
+            }
+          }
+          
+          // Get the next occurrence
+          const nextStartTime = this.getNextWeeklyOccurrence(eventCopy);
+          if (nextStartTime && new Date(nextStartTime) > now) {
+            const nextEndTime = new Date(new Date(nextStartTime).getTime() + duration).toISOString();
+            transformedEvents.push({
+              id: `${event.id}_next`,
+              title: event.name,
+              startTime: nextStartTime,
+              endTime: nextEndTime,
+              date: nextStartTime.split('T')[0],
+              isPrivate: Boolean(event.isPrivate),
+              status: event.status || 'unknown',
+              frequency: event.schedule.frequency
+            });
           }
         }
         // Handle custom frequency events
         else if (event.schedule?.frequency === 'Custom') {
-          startTime = this.getNextCustomOccurrence(event);
+          // Check if the original occurrence is currently happening or upcoming
+          if (originalEnd >= now) {
+            transformedEvents.push({
+              id: `${event.id}_original`,
+              title: event.name,
+              startTime: startUtc,
+              endTime: endUtc,
+              date: startUtc.split('T')[0],
+              isPrivate: Boolean(event.isPrivate),
+              status: event.status || 'unknown',
+              frequency: event.schedule.frequency
+            });
+          }
           
-          if (startTime) {
-            const originalStart = new Date(event.firstOccurrenceEventTimeBlock.startTimeUtc + 'Z');
-            const originalEnd = new Date(event.firstOccurrenceEventTimeBlock.endTimeUtc + 'Z');
-            const duration = originalEnd - originalStart;
-            const newEnd = new Date(new Date(startTime).getTime() + duration);
-            endTime = newEnd.toISOString();
-          } else {
-            console.log(`No upcoming occurrences found for custom event: ${event.name}`);
-            return;
+          // Check if there's a current occurrence happening now
+          const currentStartTime = this.getNextCustomOccurrence(event, true);
+          if (currentStartTime && new Date(currentStartTime) <= now) {
+            const currentEndTime = new Date(new Date(currentStartTime).getTime() + duration).toISOString();
+            
+            // Only add if this is not the original occurrence
+            if (currentStartTime !== startUtc) {
+              transformedEvents.push({
+                id: `${event.id}_current`,
+                title: event.name,
+                startTime: currentStartTime,
+                endTime: currentEndTime,
+                date: currentStartTime.split('T')[0],
+                isPrivate: Boolean(event.isPrivate),
+                status: event.status || 'unknown',
+                frequency: event.schedule.frequency
+              });
+            }
+          }
+          
+          // Get the next occurrence
+          const nextStartTime = this.getNextCustomOccurrence(event);
+          if (nextStartTime && new Date(nextStartTime) > now) {
+            const nextEndTime = new Date(new Date(nextStartTime).getTime() + duration).toISOString();
+            transformedEvents.push({
+              id: `${event.id}_next`,
+              title: event.name,
+              startTime: nextStartTime,
+              endTime: nextEndTime,
+              date: nextStartTime.split('T')[0],
+              isPrivate: Boolean(event.isPrivate),
+              status: event.status || 'unknown',
+              frequency: event.schedule.frequency
+            });
           }
         }
-  
-        if (!startTime || !endTime) {
-          console.warn('Unable to determine times for event:', event.name);
-          return;
-        }
-  
-        const eventStart = new Date(startTime);
-        const eventEnd = new Date(endTime);
-  
-        // Skip events that are in the past
-        if (eventEnd < today) {
-          console.log(`Skipping past event: ${event.name}`);
-          return;
-        }
-  
-        const transformedEvent = {
-          id: `${event.id}`,
-          title: event.name,
-          startTime: startTime,
-          endTime: endTime,
-          date: startTime.split('T')[0],
-          isPrivate: Boolean(event.isPrivate),
-          status: event.status || 'unknown',
-          frequency: event.schedule.frequency
-        };
-        
-        console.log(`Adding transformed event: ${transformedEvent.title}, Start: ${transformedEvent.startTime}`);
-        transformedEvents.push(transformedEvent);
       });
   
       // Sort events by start time

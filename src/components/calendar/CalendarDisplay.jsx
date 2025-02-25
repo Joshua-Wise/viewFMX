@@ -98,9 +98,16 @@ const CalendarDisplay = () => {
     
     const now = new Date();
     return events.find(event => {
-      const startTime = new Date(event.startTime);
-      const endTime = new Date(event.endTime);
-      return now >= startTime && now < endTime;
+      // Ensure UTC time strings have 'Z' suffix for proper UTC comparison
+      const startUtc = event.startTime.endsWith('Z') ? event.startTime : event.startTime + 'Z';
+      const endUtc = event.endTime.endsWith('Z') ? event.endTime : event.endTime + 'Z';
+      
+      const startTime = new Date(startUtc);
+      const endTime = new Date(endUtc);
+      
+      // Convert current time to UTC for proper comparison
+      const nowUtc = new Date(now.toISOString());
+      return nowUtc >= startTime && nowUtc < endTime;
     });
   };
   
@@ -108,6 +115,7 @@ const CalendarDisplay = () => {
     if (!events.length) return null;
     
     const now = new Date();
+    const nowUtc = new Date(now.toISOString());
     const currentEvent = getCurrentEvent();
     
     // Sort events by start time and find the next occurrence
@@ -118,17 +126,26 @@ const CalendarDisplay = () => {
           return false;
         }
         
-        const startTime = new Date(event.startTime);
+        // Ensure UTC time strings have 'Z' suffix for proper UTC comparison
+        const startUtc = event.startTime.endsWith('Z') ? event.startTime : event.startTime + 'Z';
+        const endUtc = event.endTime.endsWith('Z') ? event.endTime : event.endTime + 'Z';
+        
+        const startTime = new Date(startUtc);
+        const endTime = new Date(endUtc);
+        
         // For recurring events, we only care about the start time being in the future
         // For non-recurring events, we also check that they haven't ended
         if (event.frequency && event.frequency !== 'Never') {
-          return startTime > now;
+          return startTime > nowUtc;
         } else {
-          const endTime = new Date(event.endTime);
-          return now < endTime;
+          return nowUtc < endTime;
         }
       })
-      .sort((a, b) => new Date(a.startTime) - new Date(b.startTime))[0] || null;
+      .sort((a, b) => {
+        const aStart = new Date(a.startTime.endsWith('Z') ? a.startTime : a.startTime + 'Z');
+        const bStart = new Date(b.startTime.endsWith('Z') ? b.startTime : b.startTime + 'Z');
+        return aStart - bStart;
+      })[0] || null;
   };
 
   const canCreateMeeting = (duration) => {
