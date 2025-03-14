@@ -5,19 +5,39 @@ class GoFMXService {
   }
 
   getBuildingId() {
+    // First check localStorage
     const storedBuildingId = localStorage.getItem('buildingId');
-    if (!storedBuildingId) {
-      throw new Error('Building ID not configured. Please visit settings to configure.');
+    if (storedBuildingId) {
+      return storedBuildingId;
     }
-    return storedBuildingId;
+    
+    // If not in localStorage, check URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlBuildingId = urlParams.get('buildingId');
+    if (urlBuildingId) {
+      return urlBuildingId;
+    }
+    
+    // If not found in either place, throw error
+    throw new Error('Building ID not configured. Please visit settings to configure or provide in URL.');
   }
 
   getResourceId() {
+    // First check localStorage
     const storedResourceId = localStorage.getItem('resourceId');
-    if (!storedResourceId) {
-      throw new Error('Resource ID not configured. Please visit settings to configure.');
+    if (storedResourceId) {
+      return storedResourceId;
     }
-    return storedResourceId;
+    
+    // If not in localStorage, check URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlResourceId = urlParams.get('resourceId');
+    if (urlResourceId) {
+      return urlResourceId;
+    }
+    
+    // If not found in either place, throw error
+    throw new Error('Resource ID not configured. Please visit settings to configure or provide in URL.');
   }
 
   async makeRequest(endpoint, options = {}) {
