@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iPad Mini Debug Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 10px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .pass { color: green; }
+        .fail { color: red; }
+        .info { color: blue; }
+        .log-output {
+            background: #f0f0f0;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>iPad Mini Compatibility Test</h1>
+    
+    <div class="test-section">
+        <h2>Device Information</h2>
+        <div id="device-info"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>JavaScript Features Test</h2>
+        <div id="js-features"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>CSS Features Test</h2>
+        <div id="css-features"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Network Test</h2>
+        <div id="network-test"></div>
+        <button onclick="testNetworkConnection()">Test Network</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Console Logs</h2>
+        <div id="console-logs" class="log-output"></div>
+        <button onclick="clearLogs()">Clear Logs</button>
+    </div>
+
+    <script>
+        // Capture console logs
+        var originalLog = console.log;
+        var originalError = console.error;
+        var logs = [];
+
+        function addLog(type, message) {
+            var timestamp = new Date().toLocaleTimeString();
+            logs.push('[' + timestamp + '] ' + type + ': ' + message);
+            updateLogDisplay();
+        }
+
+        console.log = function() {
+            var message = Array.prototype.slice.call(arguments).join(' ');
+            addLog('LOG', message);
+            originalLog.apply(console, arguments);
+        };
+
+        console.error = function() {
+            var message = Array.prototype.slice.call(arguments).join(' ');
+            addLog('ERROR', message);
+            originalError.apply(console, arguments);
+        };
+
+        function updateLogDisplay() {
+            document.getElementById('console-logs').textContent = logs.join('\n');
+        }
+
+        function clearLogs() {
+            logs = [];
+            updateLogDisplay();
+        }
+
+        // Device Information
+        function getDeviceInfo() {
+            var info = {
+                'User Agent': navigator.userAgent,
+                'Platform': navigator.platform,
+                'Language': navigator.language,
+                'Screen Size': screen.width + 'x' + screen.height,
+                'Window Size': window.innerWidth + 'x' + window.innerHeight,
+                'Device Pixel Ratio': window.devicePixelRatio || 'unknown',
+                'Touch Support': 'ontouchstart' in window ? 'Yes' : 'No'
+            };
+
+            var html = '';
+            for (var key in info) {
+                html += '<div class="info"><strong>' + key + ':</strong> ' + info[key] + '</div>';
+            }
+            document.getElementById('device-info').innerHTML = html;
+        }
+
+        // JavaScript Features Test
+        function testJSFeatures() {
+            var tests = [
+                {
+                    name: 'ES6 Modules',
+                    test: function() { return 'noModule' in HTMLScriptElement.prototype; }
+                },
+                {
+                    name: 'Promise Support',
+                    test: function() { return typeof Promise !== 'undefined'; }
+                },
+                {
+                    name: 'Fetch API',
+                    test: function() { return typeof fetch !== 'undefined'; }
+                },
+                {
+                    name: 'Arrow Functions',
+                    test: function() { 
+                        try { 
+                            eval('(() => {})'); 
+                            return true; 
+                        } catch(e) { 
+                            return false; 
+                        } 
+                    }
+                },
+                {
+                    name: 'const/let',
+                    test: function() { 
+                        try { 
+                            eval('const x = 1; let y = 2;'); 
+                            return true; 
+                        } catch(e) { 
+                            return false; 
+                        } 
+                    }
+                },
+                {
+                    name: 'Template Literals',
+                    test: function() { 
+                        try { 
+                            eval('`template`'); 
+                            return true; 
+                        } catch(e) { 
+                            return false; 
+                        } 
+                    }
+                },
+                {
+                    name: 'Object.assign',
+                    test: function() { return typeof Object.assign !== 'undefined'; }
+                },
+                {
+                    name: 'Array.includes',
+                    test: function() { return typeof Array.prototype.includes !== 'undefined'; }
+                }
+            ];
+
+            var html = '';
+            tests.forEach(function(test) {
+                var result = test.test();
+                var className = result ? 'pass' : 'fail';
+                var status = result ? 'PASS' : 'FAIL';
+                html += '<div class="' + className + '"><strong>' + test.name + ':</strong> ' + status + '</div>';
+            });
+            document.getElementById('js-features').innerHTML = html;
+        }
+
+        // CSS Features Test
+        function testCSSFeatures() {
+            var testElement = document.createElement('div');
+            document.body.appendChild(testElement);
+
+            var tests = [
+                {
+                    name: 'Flexbox',
+                    test: function() {
+                        testElement.style.display = 'flex';
+                        return testElement.style.display === 'flex';
+                    }
+                },
+                {
+                    name: 'CSS Grid',
+                    test: function() {
+                        testElement.style.display = 'grid';
+                        return testElement.style.display === 'grid';
+                    }
+                },
+                {
+                    name: 'CSS Variables',
+                    test: function() {
+                        testElement.style.setProperty('--test', 'value');
+                        return testElement.style.getPropertyValue('--test') === 'value';
+                    }
+                },
+                {
+                    name: 'Transform',
+                    test: function() {
+                        testElement.style.transform = 'translateX(10px)';
+                        return testElement.style.transform !== '';
+                    }
+                }
+            ];
+
+            var html = '';
+            tests.forEach(function(test) {
+                var result = test.test();
+                var className = result ? 'pass' : 'fail';
+                var status = result ? 'PASS' : 'FAIL';
+                html += '<div class="' + className + '"><strong>' + test.name + ':</strong> ' + status + '</div>';
+            });
+
+            document.body.removeChild(testElement);
+            document.getElementById('css-features').innerHTML = html;
+        }
+
+        // Network Test
+        function testNetworkConnection() {
+            var testUrl = 'https://viewfmx.celinaisd.com';
+            var networkDiv = document.getElementById('network-test');
+            
+            networkDiv.innerHTML = '<div class="info">Testing connection to ' + testUrl + '...</div>';
+
+            // Test with fetch if available
+            if (typeof fetch !== 'undefined') {
+                fetch(testUrl, { method: 'HEAD', mode: 'no-cors' })
+                    .then(function() {
+                        networkDiv.innerHTML += '<div class="pass">Fetch request completed (no-cors mode)</div>';
+                    })
+                    .catch(function(error) {
+                        networkDiv.innerHTML += '<div class="fail">Fetch failed: ' + error.message + '</div>';
+                    });
+            } else {
+                // Fallback to XMLHttpRequest
+                var xhr = new XMLHttpRequest();
+                xhr.onreadystatechange = function() {
+                    if (xhr.readyState === 4) {
+                        if (xhr.status === 200 || xhr.status === 0) {
+                            networkDiv.innerHTML += '<div class="pass">XHR request completed</div>';
+                        } else {
+                            networkDiv.innerHTML += '<div class="fail">XHR failed with status: ' + xhr.status + '</div>';
+                        }
+                    }
+                };
+                xhr.open('HEAD', testUrl, true);
+                try {
+                    xhr.send();
+                } catch (error) {
+                    networkDiv.innerHTML += '<div class="fail">XHR error: ' + error.message + '</div>';
+                }
+            }
+        }
+
+        // Error handling
+        window.onerror = function(message, source, lineno, colno, error) {
+            console.error('Global error: ' + message + ' at ' + source + ':' + lineno);
+            return false;
+        };
+
+        // Run tests when page loads
+        window.onload = function() {
+            console.log('Debug page loaded successfully');
+            getDeviceInfo();
+            testJSFeatures();
+            testCSSFeatures();
+        };
+    </script>
+</body>
+</html>

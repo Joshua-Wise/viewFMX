@@ -24,6 +24,12 @@ export default defineConfig({
   build: {
     outDir: path.resolve(__dirname, '../dist'),
     sourcemap: true,
+    target: 'es2015',
+    rollupOptions: {
+      output: {
+        manualChunks: undefined,
+      },
+    },
   },
   css: {
     postcss: {

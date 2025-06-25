@@ -5,9 +5,52 @@
     <link rel="icon" type="image/svg+xml" href="/dash.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>viewFMX</title>
+    <!-- Add polyfills for older browsers -->
+    <script>
+      // Basic polyfills for older Safari
+      if (!window.Promise) {
+        document.write('<script src="https://cdn.jsdelivr.net/npm/es6-promise@4/dist/es6-promise.auto.min.js"><\/script>');
+      }
+      if (!Array.prototype.includes) {
+        Array.prototype.includes = function(searchElement) {
+          return this.indexOf(searchElement) !== -1;
+        };
+      }
+      if (!Object.assign) {
+        Object.assign = function(target) {
+          for (var i = 1; i < arguments.length; i++) {
+            var source = arguments[i];
+            for (var key in source) {
+              if (Object.prototype.hasOwnProperty.call(source, key)) {
+                target[key] = source[key];
+              }
+            }
+          }
+          return target;
+        };
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
+    <noscript>
+      <div style="text-align: center; padding: 50px; font-family: Arial, sans-serif;">
+        <h2>JavaScript Required</h2>
+        <p>This application requires JavaScript to run. Please enable JavaScript in your browser.</p>
+      </div>
+    </noscript>
+    <!-- Fallback for browsers that don't support ES modules -->
+    <script>
+      if (!('noModule' in HTMLScriptElement.prototype)) {
+        // Browser doesn't support ES modules, show compatibility message
+        document.getElementById('root').innerHTML = 
+          '<div style="text-align: center; padding: 50px; font-family: Arial, sans-serif;">' +
+          '<h2>Browser Not Supported</h2>' +
+          '<p>This application requires a modern browser. Please update your browser or try a different one.</p>' +
+          '<p>Supported browsers: Safari 10+, Chrome 61+, Firefox 60+, Edge 16+</p>' +
+          '</div>';
+      }
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
