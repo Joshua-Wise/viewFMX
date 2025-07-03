@@ -1,3 +1,5 @@
+import { healthCheck } from '../utils/healthCheck.js';
+
 class GoFMXService {
   constructor() {
     this.baseUrl = import.meta.env.VITE_API_BASE_URL || '/api/v1';
@@ -56,19 +58,51 @@ class GoFMXService {
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'application/json',
+          // Prevent browser from showing authentication dialogs
+          'Cache-Control': 'no-cache',
           ...options.headers
-        }
+        },
+        // Prevent browser authentication dialogs
+        credentials: 'omit'
       });
 
       if (!response.ok) {
         const errorText = await response.text();
         console.error('API Error Response:', errorText);
+        
+        // Record failure in health check
+        healthCheck.recordFailure(new Error(`HTTP ${response.status}: ${response.statusText}`));
+        
+        // Handle authentication errors specifically to prevent browser login prompts
+        if (response.status === 401 || response.status === 403) {
+          throw new Error('Authentication failed. Please check your API token configuration.');
+        }
+        
+        // Handle other HTTP errors
+        if (response.status >= 500) {
+          throw new Error('Server error. Please try again later.');
+        }
+        
         throw new Error(`API request failed: ${response.status} ${response.statusText}`);
       }
 
+      // Record success in health check
+      healthCheck.recordSuccess();
+      
       return await response.json();
     } catch (error) {
       console.error('Request error:', error);
+      
+      // Record failure in health check if not already recorded
+      if (!error.message.includes('Authentication failed') && !error.message.includes('Server error')) {
+        healthCheck.recordFailure(error);
+      }
+      
+      // Handle network errors
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        throw new Error('Network error. Please check your internet connection.');
+      }
+      
       throw error;
     }
   }

@@ -31,7 +31,10 @@ const CalendarDisplay = () => {
     });
   };
 
-  const fetchEvents = async () => {
+  const fetchEvents = async (retryCount = 0) => {
+    const maxRetries = 3;
+    const retryDelay = Math.pow(2, retryCount) * 1000; // Exponential backoff: 1s, 2s, 4s
+    
     try {
       const [schedule, name] = await Promise.all([
         gofmxService.getSchedule(),
@@ -43,14 +46,47 @@ const CalendarDisplay = () => {
       setQuote(getRandomQuote());
       setError(null);
     } catch (err) {
+      console.error(`Fetch attempt ${retryCount + 1} failed:`, err);
+      
+      // Check if this is an authentication error
+      if (err.message.includes('Authentication failed')) {
+        // Redirect to custom auth error page
+        window.location.href = '/auth-error.html';
+        return;
+      }
+      
+      // Check if this is a network error and we haven't exceeded max retries
+      if (retryCount < maxRetries && (
+        err.message.includes('Network error') || 
+        err.message.includes('Server error') ||
+        err.message.includes('fetch')
+      )) {
+        console.log(`Retrying in ${retryDelay}ms... (attempt ${retryCount + 1}/${maxRetries})`);
+        setTimeout(() => {
+          fetchEvents(retryCount + 1);
+        }, retryDelay);
+        return;
+      }
+      
+      // If we've exhausted retries or it's a different error, show error message
       setError('Failed to fetch calendar events. ' + err.message);
     } finally {
-      setLoading(false);
+      if (retryCount === 0) {
+        setLoading(false);
+      }
     }
   };
 
   useEffect(() => {
     fetchEvents();
+    
+    // Set up periodic refresh every 5 minutes to prevent stale data and token issues
+    const refreshInterval = setInterval(() => {
+      console.log('Performing periodic refresh...');
+      fetchEvents();
+    }, 5 * 60 * 1000); // 5 minutes
+    
+    return () => clearInterval(refreshInterval);
   }, []);
 
   const formatTime = (utcTime) => {
@@ -168,6 +204,12 @@ const CalendarDisplay = () => {
       setShowQuickMeeting(false);
       fetchEvents(); // Refresh the events list
     } catch (error) {
+      // Check if this is an authentication error
+      if (error.message.includes('Authentication failed')) {
+        // Redirect to custom auth error page
+        window.location.href = '/auth-error.html';
+        return;
+      }
       setError('Failed to create meeting: ' + error.message);
     } finally {
       setIsCreatingMeeting(false);

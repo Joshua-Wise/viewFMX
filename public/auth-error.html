@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calendar Refresh Error</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background-color: #d1d5db; /* gray-300 */
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .header {
+            background-color: #d1d5db; /* gray-300 */
+            padding: 1.5rem;
+            height: 20vh;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .header-content h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #111827; /* gray-900 */
+            margin-bottom: 0.5rem;
+        }
+        
+        .header-content p {
+            color: #4b5563; /* gray-600 */
+        }
+        
+        .logo-container {
+            width: 16rem;
+            background: transparent;
+        }
+        
+        .logo {
+            width: 100%;
+            height: auto;
+            object-fit: contain;
+        }
+        
+        .main-content {
+            height: 80vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #4b5563; /* gray-600 */
+        }
+        
+        .error-container {
+            text-align: center;
+            color: white;
+            max-width: 500px;
+            padding: 2rem;
+        }
+        
+        .error-title {
+            font-size: 2rem;
+            font-weight: 500;
+            margin-bottom: 2rem;
+        }
+        
+        .refresh-button {
+            background-color: white;
+            color: #4b5563; /* gray-600 */
+            border: none;
+            border-radius: 0.5rem;
+            padding: 1rem 2rem;
+            font-size: 1.125rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            min-width: 150px;
+        }
+        
+        .refresh-button:hover {
+            background-color: #f3f4f6; /* gray-100 */
+        }
+        
+        .refresh-button:active {
+            background-color: #e5e7eb; /* gray-200 */
+        }
+        
+        /* Responsive adjustments for iPad */
+        @media (max-width: 1024px) {
+            .header {
+                padding: 1rem;
+            }
+            
+            .header-content h1 {
+                font-size: 1.25rem;
+            }
+            
+            .logo-container {
+                width: 12rem;
+            }
+            
+            .error-title {
+                font-size: 1.75rem;
+            }
+            
+            .refresh-button {
+                padding: 0.875rem 1.75rem;
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <h1>Conference Room</h1>
+            <p>Calendar temporarily unavailable</p>
+        </div>
+        <div class="logo-container">
+            <img src="/logo.png" alt="District Logo" class="logo" onerror="this.style.display='none'">
+        </div>
+    </div>
+    
+    <div class="main-content">
+        <div class="error-container">
+            <div class="error-title">Unable to fetch FMX Calendar.</div>
+            <button class="refresh-button" onclick="refreshPage()">Refresh</button>
+        </div>
+    </div>
+    
+    <script>
+        function refreshPage() {
+            // Add a small delay to show button press feedback
+            setTimeout(() => {
+                window.location.href = '/';
+            }, 100);
+        }
+        
+        // Auto-refresh every 30 seconds as a fallback
+        setTimeout(() => {
+            window.location.href = '/';
+        }, 30000);
+        
+        // Log the error for debugging
+        console.log('Authentication error page loaded at:', new Date().toISOString());
+    </script>
+</body>
+</html>
