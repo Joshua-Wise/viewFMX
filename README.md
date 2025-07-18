@@ -66,6 +66,15 @@ docker compose -f docker/docker-compose.yml --env-file .env up -d
 
 Visit your-ip:3000 in a web browser | select building and resource
 
+### iOS 9.3.5 Compatibility
+
+For older iPads running iOS 9.3.5 that show "Browser not supported" errors, use the legacy-compatible version:
+
+- **Modern browsers**: `http://your-ip:3000/` (default)
+- **iOS 9.3.5 and older**: `http://your-ip:3000/ios9`
+
+The iOS 9 compatible version provides the same functionality using vanilla JavaScript and polyfills. See [iOS9_COMPATIBILITY.md](iOS9_COMPATIBILITY.md) for detailed information.
+
 ## Notice
 
 This project is not an official FMX product and is developed independently. I am not affiliated with or employed by FMX. It is provided "as-is" with no warranty or guarantee of functionality.

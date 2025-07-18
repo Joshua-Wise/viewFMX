@@ -1,0 +1,1141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>viewFMX - iOS 9 Compatible</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background-color: #d1d5db;
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .header {
+            background-color: #d1d5db;
+            padding: 1.5rem;
+            height: 20vh;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .header-content h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #111827;
+            margin-bottom: 0.5rem;
+        }
+        
+        .header-content p {
+            color: #4b5563;
+        }
+        
+        .logo-container {
+            width: 16rem;
+            background: transparent;
+        }
+        
+        .logo {
+            width: 100%;
+            height: auto;
+            object-fit: contain;
+        }
+        
+        .main-content {
+            display: flex;
+            height: 50vh;
+        }
+        
+        .current-meeting, .next-meeting {
+            flex: 1;
+            padding: 2rem;
+            color: white;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .current-meeting {
+            background-color: #4b5563;
+        }
+        
+        .next-meeting {
+            background-color: #6b7280;
+        }
+        
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+        
+        .meeting-title {
+            font-size: 1.5rem;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+        }
+        
+        .meeting-time {
+            font-size: 1.125rem;
+        }
+        
+        .upcoming-events {
+            height: 30vh;
+            background-color: #d1d5db;
+            padding: 1.5rem;
+            overflow-x: auto;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+        }
+        
+        .event-card {
+            min-width: 200px;
+            max-width: 200px;
+            background-color: white;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            flex-shrink: 0;
+            min-height: 140px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            margin-left: 0.75rem;
+            margin-right: 0.75rem;
+        }
+        
+        .event-card:first-child {
+            margin-left: 0;
+        }
+        
+        .event-card:last-child {
+            margin-right: 0;
+        }
+        
+        .event-title {
+            font-weight: 600;
+            margin-bottom: 1rem;
+            font-size: 1rem;
+            line-height: 1.4;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+        
+        .event-date {
+            font-size: 0.875rem;
+            color: #6b7280;
+            margin-bottom: 0.25rem;
+            line-height: 1.4;
+        }
+        
+        .event-time {
+            font-size: 0.875rem;
+            color: #6b7280;
+            line-height: 1.4;
+        }
+        
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            font-size: 1.25rem;
+        }
+        
+        .error {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            color: #dc2626;
+            text-align: center;
+            padding: 2rem;
+        }
+        
+        .refresh-button {
+            background-color: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            cursor: pointer;
+            margin-top: 1rem;
+        }
+        
+        .refresh-button:hover {
+            background-color: #2563eb;
+        }
+    </style>
+    
+    <!-- Polyfills for iOS 9.3.5 -->
+    <script>
+        // Simple Promise polyfill for iOS 9.3.5
+        if (!window.Promise) {
+            window.Promise = function(executor) {
+                var self = this;
+                self.state = 'pending';
+                self.value = undefined;
+                self.handlers = [];
+                
+                function resolve(result) {
+                    if (self.state === 'pending') {
+                        self.state = 'fulfilled';
+                        self.value = result;
+                        self.handlers.forEach(handle);
+                        self.handlers = null;
+                    }
+                }
+                
+                function reject(error) {
+                    if (self.state === 'pending') {
+                        self.state = 'rejected';
+                        self.value = error;
+                        self.handlers.forEach(handle);
+                        self.handlers = null;
+                    }
+                }
+                
+                function handle(handler) {
+                    if (self.state === 'pending') {
+                        self.handlers.push(handler);
+                    } else {
+                        if (self.state === 'fulfilled' && typeof handler.onFulfilled === 'function') {
+                            handler.onFulfilled(self.value);
+                        }
+                        if (self.state === 'rejected' && typeof handler.onRejected === 'function') {
+                            handler.onRejected(self.value);
+                        }
+                    }
+                }
+                
+                self.then = function(onFulfilled, onRejected) {
+                    return new Promise(function(resolve, reject) {
+                        handle({
+                            onFulfilled: function(result) {
+                                try {
+                                    if (typeof onFulfilled === 'function') {
+                                        resolve(onFulfilled(result));
+                                    } else {
+                                        resolve(result);
+                                    }
+                                } catch (ex) {
+                                    reject(ex);
+                                }
+                            },
+                            onRejected: function(error) {
+                                try {
+                                    if (typeof onRejected === 'function') {
+                                        resolve(onRejected(error));
+                                    } else {
+                                        reject(error);
+                                    }
+                                } catch (ex) {
+                                    reject(ex);
+                                }
+                            }
+                        });
+                    });
+                };
+                
+                self.catch = function(onRejected) {
+                    return self.then(null, onRejected);
+                };
+                
+                try {
+                    executor(resolve, reject);
+                } catch (ex) {
+                    reject(ex);
+                }
+            };
+        }
+        
+        // Simple fetch polyfill for iOS 9.3.5
+        if (!window.fetch) {
+            window.fetch = function(url, options) {
+                return new Promise(function(resolve, reject) {
+                    var xhr = new XMLHttpRequest();
+                    options = options || {};
+                    
+                    xhr.open(options.method || 'GET', url);
+                    
+                    if (options.headers) {
+                        for (var key in options.headers) {
+                            if (options.headers.hasOwnProperty(key)) {
+                                xhr.setRequestHeader(key, options.headers[key]);
+                            }
+                        }
+                    }
+                    
+                    xhr.onload = function() {
+                        var response = {
+                            ok: xhr.status >= 200 && xhr.status < 300,
+                            status: xhr.status,
+                            statusText: xhr.statusText,
+                            json: function() {
+                                return Promise.resolve(JSON.parse(xhr.responseText));
+                            },
+                            text: function() {
+                                return Promise.resolve(xhr.responseText);
+                            }
+                        };
+                        resolve(response);
+                    };
+                    
+                    xhr.onerror = function() {
+                        reject(new Error('Network error'));
+                    };
+                    
+                    xhr.send(options.body);
+                });
+            };
+        }
+        
+        // Array.prototype.find
+        if (!Array.prototype.find) {
+            Array.prototype.find = function(predicate) {
+                for (var i = 0; i < this.length; i++) {
+                    if (predicate(this[i], i, this)) {
+                        return this[i];
+                    }
+                }
+                return undefined;
+            };
+        }
+        
+        // Array.prototype.includes
+        if (!Array.prototype.includes) {
+            Array.prototype.includes = function(searchElement) {
+                return this.indexOf(searchElement) !== -1;
+            };
+        }
+        
+        // Object.assign
+        if (!Object.assign) {
+            Object.assign = function(target) {
+                for (var i = 1; i < arguments.length; i++) {
+                    var source = arguments[i];
+                    for (var key in source) {
+                        if (Object.prototype.hasOwnProperty.call(source, key)) {
+                            target[key] = source[key];
+                        }
+                    }
+                }
+                return target;
+            };
+        }
+        
+        // String methods
+        if (!String.prototype.includes) {
+            String.prototype.includes = function(search, start) {
+                if (typeof start !== 'number') {
+                    start = 0;
+                }
+                return this.indexOf(search, start) !== -1;
+            };
+        }
+        
+        if (!String.prototype.startsWith) {
+            String.prototype.startsWith = function(searchString, position) {
+                position = position || 0;
+                return this.substr(position, searchString.length) === searchString;
+            };
+        }
+        
+        if (!String.prototype.endsWith) {
+            String.prototype.endsWith = function(searchString, length) {
+                if (length === undefined || length > this.length) {
+                    length = this.length;
+                }
+                return this.substring(length - searchString.length, length) === searchString;
+            };
+        }
+        
+        // URLSearchParams polyfill for iOS 9.3.5
+        if (!window.URLSearchParams) {
+            window.URLSearchParams = function(search) {
+                var self = this;
+                self.params = {};
+                
+                if (search) {
+                    // Remove leading ? if present
+                    if (search.charAt(0) === '?') {
+                        search = search.slice(1);
+                    }
+                    
+                    // Parse the search string
+                    if (search) {
+                        var pairs = search.split('&');
+                        for (var i = 0; i < pairs.length; i++) {
+                            var pair = pairs[i].split('=');
+                            var key = decodeURIComponent(pair[0]);
+                            var value = pair[1] ? decodeURIComponent(pair[1]) : '';
+                            self.params[key] = value;
+                        }
+                    }
+                }
+                
+                // get method
+                self.get = function(key) {
+                    return self.params[key] || null;
+                };
+                
+                // set method
+                self.set = function(key, value) {
+                    self.params[key] = value;
+                };
+                
+                // toString method
+                self.toString = function() {
+                    var pairs = [];
+                    for (var key in self.params) {
+                        if (self.params.hasOwnProperty(key)) {
+                            pairs.push(encodeURIComponent(key) + '=' + encodeURIComponent(self.params[key]));
+                        }
+                    }
+                    return pairs.join('&');
+                };
+                
+                return self;
+            };
+        }
+    </script>
+</head>
+<body>
+    <div id="app">
+        <div class="loading">Loading calendar...</div>
+    </div>
+
+    <script>
+        // Simple calendar application for iOS 9.3.5 compatibility
+        var app = {
+            baseUrl: '/api/v1',
+            resourceName: 'Conference Room',
+            events: [],
+            
+            init: function() {
+                this.loadConfiguration();
+                this.fetchResourceName();
+                this.fetchEvents();
+                this.setupPeriodicRefresh();
+            },
+            
+            loadConfiguration: function() {
+                // Try to get configuration from localStorage or URL params
+                try {
+                    var urlParams = new URLSearchParams(window.location.search);
+                    this.buildingId = localStorage.getItem('buildingId') || urlParams.get('buildingId');
+                    this.resourceId = localStorage.getItem('resourceId') || urlParams.get('resourceId');
+                    
+                    // Debug logging
+                    console.log('Configuration check:', {
+                        buildingId: this.buildingId,
+                        resourceId: this.resourceId,
+                        urlParams: window.location.search,
+                        localStorage: {
+                            buildingId: localStorage.getItem('buildingId'),
+                            resourceId: localStorage.getItem('resourceId')
+                        }
+                    });
+                    
+                    if (!this.buildingId || !this.resourceId) {
+                        this.showError('Configuration missing. Please set buildingId and resourceId via URL parameters (?buildingId=123&resourceId=456) or localStorage.');
+                        return false;
+                    }
+                    return true;
+                } catch (e) {
+                    console.error('Configuration error:', e);
+                    this.showError('Configuration error: ' + e.message);
+                    return false;
+                }
+            },
+            
+            fetchResourceName: function() {
+                var self = this;
+                
+                try {
+                    if (!this.loadConfiguration()) {
+                        return;
+                    }
+                    
+                    var url = this.baseUrl + '/resources/' + this.resourceId;
+                    
+                    fetch(url, {
+                        method: 'GET',
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json',
+                            'Cache-Control': 'no-cache'
+                        },
+                        credentials: 'omit'
+                    })
+                    .then(function(response) {
+                        if (!response.ok) {
+                            if (response.status === 401 || response.status === 403) {
+                                window.location.href = '/auth-error.html';
+                                return;
+                            }
+                            throw new Error('Failed to fetch resource details: ' + response.status + ' ' + response.statusText);
+                        }
+                        
+                        return response.json();
+                    })
+                    .then(function(data) {
+                        if (data && data.name) {
+                            self.resourceName = data.name;
+                            // Re-render if we already have events loaded
+                            if (self.events && self.events.length >= 0) {
+                                self.render();
+                            }
+                        }
+                    })
+                    .catch(function(error) {
+                        console.error('Failed to fetch resource name:', error);
+                        // Don't show error for resource name fetch failure, just keep default name
+                    });
+                    
+                } catch (outerError) {
+                    console.error('Critical error in fetchResourceName:', outerError);
+                    // Don't show error for resource name fetch failure, just keep default name
+                }
+            },
+            
+            fetchEvents: function() {
+                var self = this;
+                
+                try {
+                    if (!this.loadConfiguration()) {
+                        return;
+                    }
+                    
+                    var today = new Date();
+                    var sevenDaysOut = new Date(today);
+                    sevenDaysOut.setDate(sevenDaysOut.getDate() + 7);
+                    
+                    today.setUTCHours(0, 0, 0, 0);
+                    sevenDaysOut.setUTCHours(23, 59, 59, 999);
+                    
+                    var fromDate, toDate;
+                    try {
+                        fromDate = this.toISOString(today).split('.')[0];
+                        toDate = this.toISOString(sevenDaysOut).split('.')[0];
+                    } catch (dateError) {
+                        // Fallback to simple date format
+                        fromDate = today.getFullYear() + '-' + 
+                                  (today.getMonth() + 1 < 10 ? '0' : '') + (today.getMonth() + 1) + '-' + 
+                                  (today.getDate() < 10 ? '0' : '') + today.getDate() + 'T00:00:00';
+                        toDate = sevenDaysOut.getFullYear() + '-' + 
+                                (sevenDaysOut.getMonth() + 1 < 10 ? '0' : '') + (sevenDaysOut.getMonth() + 1) + '-' + 
+                                (sevenDaysOut.getDate() < 10 ? '0' : '') + sevenDaysOut.getDate() + 'T23:59:59';
+                    }
+                    
+                    var queryParams;
+                    try {
+                        queryParams = new URLSearchParams({
+                            fromDate: fromDate,
+                            toDate: toDate,
+                            buildingIDs: this.buildingId,
+                            resourceIDs: this.resourceId,
+                            statuses: 'FinalizedUpcoming'
+                        });
+                    } catch (urlError) {
+                        // Manual query string building
+                        var params = [
+                            'fromDate=' + encodeURIComponent(fromDate),
+                            'toDate=' + encodeURIComponent(toDate),
+                            'buildingIDs=' + encodeURIComponent(this.buildingId),
+                            'resourceIDs=' + encodeURIComponent(this.resourceId),
+                            'statuses=FinalizedUpcoming'
+                        ];
+                        queryParams = { toString: function() { return params.join('&'); } };
+                    }
+                    
+                    var url = this.baseUrl + '/scheduling/requests?' + queryParams.toString();
+                    
+                    // Add timeout for network requests
+                    var timeoutId = setTimeout(function() {
+                        self.showError('Request timeout - please check your network connection');
+                    }, 30000);
+                    
+                    fetch(url, {
+                        method: 'GET',
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json',
+                            'Cache-Control': 'no-cache'
+                        },
+                        credentials: 'omit'
+                    })
+                    .then(function(response) {
+                        clearTimeout(timeoutId);
+                        
+                        if (!response.ok) {
+                            if (response.status === 401 || response.status === 403) {
+                                window.location.href = '/auth-error.html';
+                                return;
+                            }
+                            throw new Error('API request failed: ' + response.status + ' ' + response.statusText);
+                        }
+                        
+                        return response.json();
+                    })
+                    .then(function(data) {
+                        self.events = self.transformEvents(data || []);
+                        self.render();
+                    })
+                    .catch(function(error) {
+                        clearTimeout(timeoutId);
+                        
+                        if (error.message.includes('Authentication') || error.message.includes('401') || error.message.includes('403')) {
+                            window.location.href = '/auth-error.html';
+                        } else {
+                            self.showError('Failed to load calendar: ' + error.message);
+                        }
+                    });
+                    
+                } catch (outerError) {
+                    this.showError('Critical error in fetchEvents: ' + outerError.message);
+                }
+            },
+            
+            getNextWeeklyOccurrence: function(event, includeCurrentOccurrence) {
+                var now = new Date();
+                var today = new Date(now);
+                today.setUTCHours(0, 0, 0, 0);
+                
+                var sevenDaysOut = new Date(today);
+                sevenDaysOut.setDate(sevenDaysOut.getDate() + 7);
+                sevenDaysOut.setUTCHours(23, 59, 59, 999);
+                
+                // Ensure UTC time strings have 'Z' suffix
+                var startUtc = event.firstOccurrenceEventTimeBlock.startTimeUtc;
+                var endUtc = event.firstOccurrenceEventTimeBlock.endTimeUtc;
+                if (!startUtc.endsWith('Z')) startUtc += 'Z';
+                if (!endUtc.endsWith('Z')) endUtc += 'Z';
+                
+                var firstOccurrence = new Date(startUtc);
+                var eventEndTime = new Date(endUtc);
+                
+                // Calculate event duration for later use
+                var duration = eventEndTime - firstOccurrence;
+                
+                var dayMap = {
+                    'Sunday': 0, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3,
+                    'Thursday': 4, 'Friday': 5, 'Saturday': 6
+                };
+                
+                var targetDay = dayMap[event.schedule.weeklyDaysOfWeek[0]];
+                
+                // Start from today
+                var currentDate = new Date(today);
+                
+                // If it's the target day, check if the event is currently happening
+                if (currentDate.getUTCDay() === targetDay) {
+                    var todayOccurrence = new Date(currentDate);
+                    // Set the date part only, keeping the original UTC time
+                    todayOccurrence.setUTCFullYear(currentDate.getUTCFullYear());
+                    todayOccurrence.setUTCMonth(currentDate.getUTCMonth());
+                    todayOccurrence.setUTCDate(currentDate.getUTCDate());
+                    // Set the time part from the original event
+                    todayOccurrence.setUTCHours(firstOccurrence.getUTCHours());
+                    todayOccurrence.setUTCMinutes(firstOccurrence.getUTCMinutes());
+                    
+                    // Calculate the end time of today's occurrence
+                    var todayOccurrenceEnd = new Date(todayOccurrence.getTime() + duration);
+                    
+                    // If the event is currently happening and we want to include current occurrences
+                    if (includeCurrentOccurrence && now >= todayOccurrence && now < todayOccurrenceEnd && todayOccurrence >= firstOccurrence) {
+                        return this.toISOString(todayOccurrence);
+                    }
+                    
+                    // If the event hasn't started yet today, we can use it
+                    if (todayOccurrence > now && todayOccurrence >= firstOccurrence) {
+                        return this.toISOString(todayOccurrence);
+                    }
+                    
+                    // If we're on the target day but the event has ended, skip to next week
+                    currentDate.setDate(currentDate.getDate() + 7);
+                } else {
+                    // Find the next occurrence of the target day
+                    while (currentDate.getUTCDay() !== targetDay && currentDate <= sevenDaysOut) {
+                        currentDate.setDate(currentDate.getDate() + 1);
+                    }
+                }
+                
+                // Find the next valid occurrence
+                while (currentDate <= sevenDaysOut) {
+                    // Check terminal end date if it exists
+                    if (event.schedule.terminal === 'On date') {
+                        var endDate = new Date(event.schedule.terminalEndDate + 'Z');
+                        if (currentDate > endDate) {
+                            return null;
+                        }
+                    }
+                    
+                    // Create the next occurrence preserving the original UTC time
+                    var nextOccurrence = new Date(currentDate);
+                    // Set the date part only, keeping the original UTC time
+                    nextOccurrence.setUTCFullYear(currentDate.getUTCFullYear());
+                    nextOccurrence.setUTCMonth(currentDate.getUTCMonth());
+                    nextOccurrence.setUTCDate(currentDate.getUTCDate());
+                    // Set the time part from the original event
+                    nextOccurrence.setUTCHours(firstOccurrence.getUTCHours());
+                    nextOccurrence.setUTCMinutes(firstOccurrence.getUTCMinutes());
+                    
+                    // Check if this occurrence is valid
+                    if (nextOccurrence >= firstOccurrence && nextOccurrence > now) {
+                        return this.toISOString(nextOccurrence);
+                    }
+                    
+                    // Move to next week
+                    currentDate.setDate(currentDate.getDate() + 7);
+                }
+                
+                return null;
+            },
+            
+            getNextCustomOccurrence: function(event, includeCurrentOccurrence) {
+                var now = new Date();
+                var today = new Date(now);
+                today.setUTCHours(0, 0, 0, 0);
+                
+                var sevenDaysOut = new Date(today);
+                sevenDaysOut.setDate(sevenDaysOut.getDate() + 7);
+                sevenDaysOut.setUTCHours(23, 59, 59, 999);
+                
+                if (event.schedule.customOccurrenceDates) {
+                    var eventTime = new Date(event.firstOccurrenceEventTimeBlock.startTimeUtc + 'Z');
+                    var eventDuration = new Date(event.firstOccurrenceEventTimeBlock.endTimeUtc + 'Z') - eventTime;
+                    
+                    // Check if there's a current occurrence happening now
+                    if (includeCurrentOccurrence) {
+                        var currentDate = null;
+                        for (var i = 0; i < event.schedule.customOccurrenceDates.length; i++) {
+                            var dateStr = event.schedule.customOccurrenceDates[i];
+                            var occurrenceDate = new Date(dateStr + 'Z');
+                            occurrenceDate.setUTCHours(eventTime.getUTCHours());
+                            occurrenceDate.setUTCMinutes(eventTime.getUTCMinutes());
+                            
+                            var occurrenceEndTime = new Date(occurrenceDate.getTime() + eventDuration);
+                            
+                            if (now >= occurrenceDate && now < occurrenceEndTime) {
+                                currentDate = dateStr;
+                                break;
+                            }
+                        }
+                        
+                        if (currentDate) {
+                            var currentOccurrence = new Date(currentDate + 'Z');
+                            currentOccurrence.setUTCHours(eventTime.getUTCHours());
+                            currentOccurrence.setUTCMinutes(eventTime.getUTCMinutes());
+                            
+                            return this.toISOString(currentOccurrence);
+                        }
+                    }
+                    
+                    // Find the next valid date
+                    var nextDate = null;
+                    for (var j = 0; j < event.schedule.customOccurrenceDates.length; j++) {
+                        var dateStr2 = event.schedule.customOccurrenceDates[j];
+                        var occurrenceDate2 = new Date(dateStr2 + 'Z');
+                        occurrenceDate2.setUTCHours(eventTime.getUTCHours());
+                        occurrenceDate2.setUTCMinutes(eventTime.getUTCMinutes());
+                        
+                        if (occurrenceDate2 > now && occurrenceDate2 <= sevenDaysOut) {
+                            nextDate = dateStr2;
+                            break;
+                        }
+                    }
+                    
+                    if (nextDate) {
+                        // Create the next occurrence with the adjusted time
+                        var nextOccurrence = new Date(nextDate + 'Z');
+                        nextOccurrence.setUTCHours(eventTime.getUTCHours());
+                        nextOccurrence.setUTCMinutes(eventTime.getUTCMinutes());
+                        
+                        return this.toISOString(nextOccurrence);
+                    }
+                }
+                
+                return null;
+            },
+            
+            transformEvents: function(data) {
+                if (!Array.isArray(data)) {
+                    console.warn('Received invalid data format:', data);
+                    return [];
+                }
+                
+                try {
+                    var transformedEvents = [];
+                    var now = new Date();
+                    var today = new Date(now);
+                    today.setUTCHours(0, 0, 0, 0);
+                    
+                    for (var i = 0; i < data.length; i++) {
+                        var event = data[i];
+                        console.log('Processing event: ' + event.name);
+                        
+                        if (!event.firstOccurrenceEventTimeBlock || 
+                            !event.firstOccurrenceEventTimeBlock.startTimeUtc || 
+                            !event.firstOccurrenceEventTimeBlock.endTimeUtc) {
+                            console.warn('Event missing required time blocks:', event.name);
+                            continue;
+                        }
+                        
+                        // Ensure UTC time strings have 'Z' suffix
+                        var startUtc = event.firstOccurrenceEventTimeBlock.startTimeUtc;
+                        var endUtc = event.firstOccurrenceEventTimeBlock.endTimeUtc;
+                        if (!startUtc.endsWith('Z')) startUtc += 'Z';
+                        if (!endUtc.endsWith('Z')) endUtc += 'Z';
+                        
+                        var originalStart = new Date(startUtc);
+                        var originalEnd = new Date(endUtc);
+                        var duration = originalEnd - originalStart;
+                        
+                        // For one-time events
+                        if (event.schedule && event.schedule.frequency === 'Never') {
+                            if (originalEnd >= today) {
+                                transformedEvents.push({
+                                    id: event.id + '',
+                                    title: event.name,
+                                    startTime: startUtc,
+                                    endTime: endUtc,
+                                    date: startUtc.split('T')[0],
+                                    isPrivate: Boolean(event.isPrivate),
+                                    status: event.status || 'unknown',
+                                    frequency: event.schedule.frequency,
+                                    start: originalStart,
+                                    end: originalEnd
+                                });
+                            }
+                        }
+                        // Handle weekly events
+                        else if (event.schedule && event.schedule.frequency === 'Weekly' && 
+                                event.schedule.weeklyDaysOfWeek && event.schedule.weeklyDaysOfWeek.length > 0) {
+                            
+                            // Create a deep copy of the event with the corrected UTC times
+                            var eventCopy = {
+                                id: event.id,
+                                name: event.name,
+                                schedule: {
+                                    frequency: event.schedule.frequency,
+                                    weeklyDaysOfWeek: event.schedule.weeklyDaysOfWeek.slice(),
+                                    terminal: event.schedule.terminal,
+                                    terminalEndDate: event.schedule.terminalEndDate
+                                },
+                                firstOccurrenceEventTimeBlock: {
+                                    startTimeUtc: startUtc,
+                                    endTimeUtc: endUtc
+                                }
+                            };
+                            
+                            // Check if the original occurrence is currently happening or upcoming
+                            if (originalEnd >= now) {
+                                transformedEvents.push({
+                                    id: event.id + '_original',
+                                    title: event.name,
+                                    startTime: startUtc,
+                                    endTime: endUtc,
+                                    date: startUtc.split('T')[0],
+                                    isPrivate: Boolean(event.isPrivate),
+                                    status: event.status || 'unknown',
+                                    frequency: event.schedule.frequency,
+                                    start: originalStart,
+                                    end: originalEnd
+                                });
+                            }
+                            
+                            // Check if there's a current occurrence happening now
+                            var currentStartTime = this.getNextWeeklyOccurrence(eventCopy, true);
+                            if (currentStartTime && new Date(currentStartTime) <= now) {
+                                var currentEndTime = this.toISOString(new Date(new Date(currentStartTime).getTime() + duration));
+                                
+                                // Only add if this is not the original occurrence
+                                if (currentStartTime !== startUtc) {
+                                    transformedEvents.push({
+                                        id: event.id + '_current',
+                                        title: event.name,
+                                        startTime: currentStartTime,
+                                        endTime: currentEndTime,
+                                        date: currentStartTime.split('T')[0],
+                                        isPrivate: Boolean(event.isPrivate),
+                                        status: event.status || 'unknown',
+                                        frequency: event.schedule.frequency,
+                                        start: new Date(currentStartTime),
+                                        end: new Date(currentEndTime)
+                                    });
+                                }
+                            }
+                            
+                            // Get the next occurrence
+                            var nextStartTime = this.getNextWeeklyOccurrence(eventCopy);
+                            if (nextStartTime && new Date(nextStartTime) > now) {
+                                var nextEndTime = this.toISOString(new Date(new Date(nextStartTime).getTime() + duration));
+                                transformedEvents.push({
+                                    id: event.id + '_next',
+                                    title: event.name,
+                                    startTime: nextStartTime,
+                                    endTime: nextEndTime,
+                                    date: nextStartTime.split('T')[0],
+                                    isPrivate: Boolean(event.isPrivate),
+                                    status: event.status || 'unknown',
+                                    frequency: event.schedule.frequency,
+                                    start: new Date(nextStartTime),
+                                    end: new Date(nextEndTime)
+                                });
+                            }
+                        }
+                        // Handle custom frequency events
+                        else if (event.schedule && event.schedule.frequency === 'Custom') {
+                            // Check if the original occurrence is currently happening or upcoming
+                            if (originalEnd >= now) {
+                                transformedEvents.push({
+                                    id: event.id + '_original',
+                                    title: event.name,
+                                    startTime: startUtc,
+                                    endTime: endUtc,
+                                    date: startUtc.split('T')[0],
+                                    isPrivate: Boolean(event.isPrivate),
+                                    status: event.status || 'unknown',
+                                    frequency: event.schedule.frequency,
+                                    start: originalStart,
+                                    end: originalEnd
+                                });
+                            }
+                            
+                            // Check if there's a current occurrence happening now
+                            var currentStartTime2 = this.getNextCustomOccurrence(event, true);
+                            if (currentStartTime2 && new Date(currentStartTime2) <= now) {
+                                var currentEndTime2 = this.toISOString(new Date(new Date(currentStartTime2).getTime() + duration));
+                                
+                                // Only add if this is not the original occurrence
+                                if (currentStartTime2 !== startUtc) {
+                                    transformedEvents.push({
+                                        id: event.id + '_current',
+                                        title: event.name,
+                                        startTime: currentStartTime2,
+                                        endTime: currentEndTime2,
+                                        date: currentStartTime2.split('T')[0],
+                                        isPrivate: Boolean(event.isPrivate),
+                                        status: event.status || 'unknown',
+                                        frequency: event.schedule.frequency,
+                                        start: new Date(currentStartTime2),
+                                        end: new Date(currentEndTime2)
+                                    });
+                                }
+                            }
+                            
+                            // Get the next occurrence
+                            var nextStartTime2 = this.getNextCustomOccurrence(event);
+                            if (nextStartTime2 && new Date(nextStartTime2) > now) {
+                                var nextEndTime2 = this.toISOString(new Date(new Date(nextStartTime2).getTime() + duration));
+                                transformedEvents.push({
+                                    id: event.id + '_next',
+                                    title: event.name,
+                                    startTime: nextStartTime2,
+                                    endTime: nextEndTime2,
+                                    date: nextStartTime2.split('T')[0],
+                                    isPrivate: Boolean(event.isPrivate),
+                                    status: event.status || 'unknown',
+                                    frequency: event.schedule.frequency,
+                                    start: new Date(nextStartTime2),
+                                    end: new Date(nextEndTime2)
+                                });
+                            }
+                        }
+                    }
+                    
+                    // Sort events by start time
+                    return transformedEvents.sort(function(a, b) {
+                        return a.start - b.start;
+                    });
+                    
+                } catch (error) {
+                    console.error('Error in transformEvents:', error);
+                    return [];
+                }
+            },
+            
+            getCurrentEvent: function() {
+                var now = new Date();
+                for (var i = 0; i < this.events.length; i++) {
+                    var event = this.events[i];
+                    if (now >= event.start && now < event.end) {
+                        return event;
+                    }
+                }
+                return null;
+            },
+            
+            getNextEvent: function() {
+                var now = new Date();
+                var currentEvent = this.getCurrentEvent();
+                
+                for (var i = 0; i < this.events.length; i++) {
+                    var event = this.events[i];
+                    if (event.start > now && (!currentEvent || event.id !== currentEvent.id)) {
+                        return event;
+                    }
+                }
+                return null;
+            },
+            
+            formatTime: function(utcTime) {
+                try {
+                    var date = new Date(utcTime);
+                    // Simple time formatting for iOS 9.3.5 compatibility
+                    var hours = date.getHours();
+                    var minutes = date.getMinutes();
+                    var ampm = hours >= 12 ? 'PM' : 'AM';
+                    hours = hours % 12;
+                    hours = hours ? hours : 12; // the hour '0' should be '12'
+                    minutes = minutes < 10 ? '0' + minutes : minutes;
+                    return hours + ':' + minutes + ' ' + ampm;
+                } catch (e) {
+                    console.error('Error formatting time:', e);
+                    return '';
+                }
+            },
+            
+            formatDate: function(utcTime) {
+                try {
+                    var date = new Date(utcTime);
+                    // Simple date formatting for iOS 9.3.5 compatibility
+                    var month = (date.getMonth() + 1);
+                    var day = date.getDate();
+                    var year = date.getFullYear();
+                    
+                    month = month < 10 ? '0' + month : month;
+                    day = day < 10 ? '0' + day : day;
+                    
+                    return month + '/' + day + '/' + year;
+                } catch (e) {
+                    console.error('Error formatting date:', e);
+                    return '';
+                }
+            },
+            
+            // iOS 9.3.5 compatible date to ISO string
+            toISOString: function(date) {
+                try {
+                    if (date.toISOString) {
+                        return date.toISOString();
+                    }
+                    // Fallback for older browsers
+                    var year = date.getUTCFullYear();
+                    var month = (date.getUTCMonth() + 1);
+                    var day = date.getUTCDate();
+                    var hours = date.getUTCHours();
+                    var minutes = date.getUTCMinutes();
+                    var seconds = date.getUTCSeconds();
+                    
+                    month = month < 10 ? '0' + month : month;
+                    day = day < 10 ? '0' + day : day;
+                    hours = hours < 10 ? '0' + hours : hours;
+                    minutes = minutes < 10 ? '0' + minutes : minutes;
+                    seconds = seconds < 10 ? '0' + seconds : seconds;
+                    
+                    return year + '-' + month + '-' + day + 'T' + hours + ':' + minutes + ':' + seconds;
+                } catch (e) {
+                    console.error('Error converting to ISO string:', e);
+                    return '';
+                }
+            },
+            
+            render: function() {
+                var currentEvent = this.getCurrentEvent();
+                var nextEvent = this.getNextEvent();
+                var upcomingEvents = this.events.slice(0, 5);
+                
+                var html = 
+                    '<div class="header">' +
+                        '<div class="header-content">' +
+                            '<h1>' + this.resourceName + '</h1>' +
+                            '<p>Conference room calendar</p>' +
+                        '</div>' +
+                        '<div class="logo-container">' +
+                            '<img src="/logo.png" alt="Logo" class="logo" onerror="this.style.display=\'none\'">' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="main-content">' +
+                        '<div class="current-meeting">' +
+                            '<div class="section-title">' + (currentEvent ? 'Current Meeting' : 'Available') + '</div>';
+                
+                if (currentEvent) {
+                    html += '<div class="meeting-title">' + currentEvent.title + '</div>' +
+                           '<div class="meeting-time">' + this.formatTime(currentEvent.startTime) + ' - ' + this.formatTime(currentEvent.endTime) + '</div>';
+                }
+                
+                html += '</div>' +
+                        '<div class="next-meeting">' +
+                            '<div class="section-title">Next Meeting</div>';
+                
+                if (nextEvent) {
+                    html += '<div class="meeting-title">' + nextEvent.title + '</div>' +
+                           '<div class="meeting-time">' + this.formatDate(nextEvent.startTime) + '</div>' +
+                           '<div class="meeting-time">' + this.formatTime(nextEvent.startTime) + ' - ' + this.formatTime(nextEvent.endTime) + '</div>';
+                } else {
+                    html += '<div class="meeting-title">No upcoming meetings</div>';
+                }
+                
+                html += '</div>' +
+                    '</div>' +
+                    '<div class="upcoming-events">';
+                
+                for (var i = 0; i < upcomingEvents.length; i++) {
+                    var event = upcomingEvents[i];
+                    if (event !== currentEvent && event !== nextEvent) {
+                        html += '<div class="event-card">' +
+                               '<div class="event-title">' + event.title + '</div>' +
+                               '<div class="event-date">' + this.formatDate(event.startTime) + '</div>' +
+                               '<div class="event-time">' + this.formatTime(event.startTime) + ' - ' + this.formatTime(event.endTime) + '</div>' +
+                               '</div>';
+                    }
+                }
+                
+                html += '</div>';
+                
+                document.getElementById('app').innerHTML = html;
+            },
+            
+            showError: function(message) {
+                document.getElementById('app').innerHTML = 
+                    '<div class="error">' +
+                        '<h2>Error</h2>' +
+                        '<p>' + message + '</p>' +
+                        '<button class="refresh-button" onclick="window.location.reload()">Refresh</button>' +
+                    '</div>';
+            },
+            
+            setupPeriodicRefresh: function() {
+                var self = this;
+                setInterval(function() {
+                    self.fetchEvents();
+                }, 5 * 60 * 1000); // Refresh every 5 minutes
+            }
+        };
+        
+        // Initialize the app when the page loads
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function() {
+                app.init();
+            });
+        } else {
+            app.init();
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>viewFMX - iOS 9 Compatible</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background-color: #d1d5db;
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .header {
+            background-color: #d1d5db;
+            padding: 1.5rem;
+            height: 20vh;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .header-content h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #111827;
+            margin-bottom: 0.5rem;
+        }
+        
+        .header-content p {
+            color: #4b5563;
+        }
+        
+        .logo-container {
+            width: 16rem;
+            background: transparent;
+        }
+        
+        .logo {
+            width: 100%;
+            height: auto;
+            object-fit: contain;
+        }
+        
+        .main-content {
+            display: flex;
+            height: 50vh;
+        }
+        
+        .current-meeting, .next-meeting {
+            flex: 1;
+            padding: 2rem;
+            color: white;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .current-meeting {
+            background-color: #4b5563;
+        }
+        
+        .next-meeting {
+            background-color: #6b7280;
+        }
+        
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+        
+        .meeting-title {
+            font-size: 1.5rem;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+        }
+        
+        .meeting-time {
+            font-size: 1.125rem;
+        }
+        
+        .upcoming-events {
+            height: 30vh;
+            background-color: #d1d5db;
+            padding: 1.5rem;
+            overflow-x: auto;
+            display: flex;
+            gap: 1rem;
+        }
+        
+        .event-card {
+            min-width: 200px;
+            background-color: white;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        
+        .event-title {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        
+        .event-date, .event-time {
+            font-size: 0.875rem;
+            color: #6b7280;
+        }
+        
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            font-size: 1.25rem;
+        }
+        
+        .error {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            color: #dc2626;
+            text-align: center;
+            padding: 2rem;
+        }
+        
+        .refresh-button {
+            background-color: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            cursor: pointer;
+            margin-top: 1rem;
+        }
+        
+        .refresh-button:hover {
+            background-color: #2563eb;
+        }
+    </style>
+    
+    <!-- Polyfills for iOS 9.3.5 -->
+    <script>
+        // Promise polyfill
+        if (!window.Promise) {
+            document.write('<script src="https://cdn.jsdelivr.net/npm/es6-promise@4/dist/es6-promise.auto.min.js"><\/script>');
+        }
+        
+        // Fetch polyfill
+        if (!window.fetch) {
+            document.write('<script src="https://cdn.jsdelivr.net/npm/whatwg-fetch@3.6.2/dist/fetch.umd.js"><\/script>');
+        }
+        
+        // Array.prototype.find
+        if (!Array.prototype.find) {
+            Array.prototype.find = function(predicate) {
+                for (var i = 0; i < this.length; i++) {
+                    if (predicate(this[i], i, this)) {
+                        return this[i];
+                    }
+                }
+                return undefined;
+            };
+        }
+        
+        // Array.prototype.includes
+        if (!Array.prototype.includes) {
+            Array.prototype.includes = function(searchElement) {
+                return this.indexOf(searchElement) !== -1;
+            };
+        }
+        
+        // Object.assign
+        if (!Object.assign) {
+            Object.assign = function(target) {
+                for (var i = 1; i < arguments.length; i++) {
+                    var source = arguments[i];
+                    for (var key in source) {
+                        if (Object.prototype.hasOwnProperty.call(source, key)) {
+                            target[key] = source[key];
+                        }
+                    }
+                }
+                return target;
+            };
+        }
+        
+        // String methods
+        if (!String.prototype.includes) {
+            String.prototype.includes = function(search, start) {
+                if (typeof start !== 'number') {
+                    start = 0;
+                }
+                return this.indexOf(search, start) !== -1;
+            };
+        }
+        
+        if (!String.prototype.startsWith) {
+            String.prototype.startsWith = function(searchString, position) {
+                position = position || 0;
+                return this.substr(position, searchString.length) === searchString;
+            };
+        }
+        
+        if (!String.prototype.endsWith) {
+            String.prototype.endsWith = function(searchString, length) {
+                if (length === undefined || length > this.length) {
+                    length = this.length;
+                }
+                return this.substring(length - searchString.length, length) === searchString;
+            };
+        }
+        
+        // URLSearchParams polyfill for iOS 9.3.5
+        if (!window.URLSearchParams) {
+            window.URLSearchParams = function(search) {
+                var self = this;
+                self.params = {};
+                
+                if (search) {
+                    // Remove leading ? if present
+                    if (search.charAt(0) === '?') {
+                        search = search.slice(1);
+                    }
+                    
+                    // Parse the search string
+                    if (search) {
+                        var pairs = search.split('&');
+                        for (var i = 0; i < pairs.length; i++) {
+                            var pair = pairs[i].split('=');
+                            var key = decodeURIComponent(pair[0]);
+                            var value = pair[1] ? decodeURIComponent(pair[1]) : '';
+                            self.params[key] = value;
+                        }
+                    }
+                }
+                
+                // get method
+                self.get = function(key) {
+                    return self.params[key] || null;
+                };
+                
+                // set method
+                self.set = function(key, value) {
+                    self.params[key] = value;
+                };
+                
+                // toString method
+                self.toString = function() {
+                    var pairs = [];
+                    for (var key in self.params) {
+                        if (self.params.hasOwnProperty(key)) {
+                            pairs.push(encodeURIComponent(key) + '=' + encodeURIComponent(self.params[key]));
+                        }
+                    }
+                    return pairs.join('&');
+                };
+                
+                return self;
+            };
+        }
+    </script>
+</head>
+<body>
+    <div id="app">
+        <div class="loading">Loading calendar...</div>
+    </div>
+
+    <script>
+        // Simple calendar application for iOS 9.3.5 compatibility
+        var app = {
+            baseUrl: '/api/v1',
+            resourceName: 'Conference Room',
+            events: [],
+            
+            init: function() {
+                this.loadConfiguration();
+                this.fetchEvents();
+                this.setupPeriodicRefresh();
+            },
+            
+            loadConfiguration: function() {
+                // Try to get configuration from localStorage or URL params
+                try {
+                    var urlParams = new URLSearchParams(window.location.search);
+                    this.buildingId = localStorage.getItem('buildingId') || urlParams.get('buildingId');
+                    this.resourceId = localStorage.getItem('resourceId') || urlParams.get('resourceId');
+                    
+                    // Debug logging
+                    console.log('Configuration check:', {
+                        buildingId: this.buildingId,
+                        resourceId: this.resourceId,
+                        urlParams: window.location.search,
+                        localStorage: {
+                            buildingId: localStorage.getItem('buildingId'),
+                            resourceId: localStorage.getItem('resourceId')
+                        }
+                    });
+                    
+                    if (!this.buildingId || !this.resourceId) {
+                        this.showError('Configuration missing. Please set buildingId and resourceId via URL parameters (?buildingId=123&resourceId=456) or localStorage.');
+                        return false;
+                    }
+                    return true;
+                } catch (e) {
+                    console.error('Configuration error:', e);
+                    this.showError('Configuration error: ' + e.message);
+                    return false;
+                }
+            },
+            
+            fetchEvents: function() {
+                var self = this;
+                
+                if (!this.loadConfiguration()) {
+                    return;
+                }
+                
+                var today = new Date();
+                var thirtyDaysOut = new Date(today);
+                thirtyDaysOut.setDate(thirtyDaysOut.getDate() + 30);
+                
+                today.setUTCHours(0, 0, 0, 0);
+                thirtyDaysOut.setUTCHours(23, 59, 59, 999);
+                
+                var fromDate = today.toISOString().split('.')[0];
+                var toDate = thirtyDaysOut.toISOString().split('.')[0];
+                
+                var queryParams = new URLSearchParams({
+                    fromDate: fromDate,
+                    toDate: toDate,
+                    buildingIDs: this.buildingId,
+                    resourceIDs: this.resourceId,
+                    statuses: 'FinalizedUpcoming'
+                });
+                
+                var url = this.baseUrl + '/scheduling/requests?' + queryParams.toString();
+                
+                fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'Cache-Control': 'no-cache'
+                    },
+                    credentials: 'omit'
+                })
+                .then(function(response) {
+                    if (!response.ok) {
+                        if (response.status === 401 || response.status === 403) {
+                            window.location.href = '/auth-error.html';
+                            return;
+                        }
+                        throw new Error('API request failed: ' + response.status);
+                    }
+                    return response.json();
+                })
+                .then(function(data) {
+                    self.events = self.transformEvents(data || []);
+                    self.render();
+                })
+                .catch(function(error) {
+                    console.error('Error fetching events:', error);
+                    if (error.message.includes('Authentication') || error.message.includes('401') || error.message.includes('403')) {
+                        window.location.href = '/auth-error.html';
+                    } else {
+                        self.showError('Failed to load calendar: ' + error.message);
+                    }
+                });
+            },
+            
+            transformEvents: function(data) {
+                var events = [];
+                var now = new Date();
+                
+                for (var i = 0; i < data.length; i++) {
+                    var event = data[i];
+                    if (event.firstOccurrenceEventTimeBlock && event.firstOccurrenceEventTimeBlock.startTimeUtc) {
+                        var startTime = event.firstOccurrenceEventTimeBlock.startTimeUtc;
+                        var endTime = event.firstOccurrenceEventTimeBlock.endTimeUtc;
+                        
+                        // Ensure UTC time strings have 'Z' suffix
+                        if (!startTime.endsWith('Z')) startTime += 'Z';
+                        if (!endTime.endsWith('Z')) endTime += 'Z';
+                        
+                        var eventStart = new Date(startTime);
+                        var eventEnd = new Date(endTime);
+                        
+                        if (eventEnd >= now) {
+                            events.push({
+                                id: event.id,
+                                title: event.name,
+                                startTime: startTime,
+                                endTime: endTime,
+                                start: eventStart,
+                                end: eventEnd
+                            });
+                        }
+                    }
+                }
+                
+                // Sort by start time
+                events.sort(function(a, b) {
+                    return a.start - b.start;
+                });
+                
+                return events;
+            },
+            
+            getCurrentEvent: function() {
+                var now = new Date();
+                for (var i = 0; i < this.events.length; i++) {
+                    var event = this.events[i];
+                    if (now >= event.start && now < event.end) {
+                        return event;
+                    }
+                }
+                return null;
+            },
+            
+            getNextEvent: function() {
+                var now = new Date();
+                var currentEvent = this.getCurrentEvent();
+                
+                for (var i = 0; i < this.events.length; i++) {
+                    var event = this.events[i];
+                    if (event.start > now && (!currentEvent || event.id !== currentEvent.id)) {
+                        return event;
+                    }
+                }
+                return null;
+            },
+            
+            formatTime: function(utcTime) {
+                try {
+                    var date = new Date(utcTime);
+                    return date.toLocaleTimeString('en-US', {
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        hour12: true,
+                        timeZone: 'America/Chicago'
+                    });
+                } catch (e) {
+                    return '';
+                }
+            },
+            
+            formatDate: function(utcTime) {
+                try {
+                    var date = new Date(utcTime);
+                    return date.toLocaleDateString('en-US', {
+                        month: '2-digit',
+                        day: '2-digit',
+                        year: 'numeric',
+                        timeZone: 'America/Chicago'
+                    });
+                } catch (e) {
+                    return '';
+                }
+            },
+            
+            render: function() {
+                var currentEvent = this.getCurrentEvent();
+                var nextEvent = this.getNextEvent();
+                var upcomingEvents = this.events.slice(0, 5);
+                
+                var html = 
+                    '<div class="header">' +
+                        '<div class="header-content">' +
+                            '<h1>' + this.resourceName + '</h1>' +
+                            '<p>Conference room calendar</p>' +
+                        '</div>' +
+                        '<div class="logo-container">' +
+                            '<img src="/logo.png" alt="Logo" class="logo" onerror="this.style.display=\'none\'">' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="main-content">' +
+                        '<div class="current-meeting">' +
+                            '<div class="section-title">' + (currentEvent ? 'Current Meeting' : 'Available') + '</div>';
+                
+                if (currentEvent) {
+                    html += '<div class="meeting-title">' + currentEvent.title + '</div>' +
+                           '<div class="meeting-time">' + this.formatTime(currentEvent.startTime) + ' - ' + this.formatTime(currentEvent.endTime) + '</div>';
+                }
+                
+                html += '</div>' +
+                        '<div class="next-meeting">' +
+                            '<div class="section-title">Next Meeting</div>';
+                
+                if (nextEvent) {
+                    html += '<div class="meeting-title">' + nextEvent.title + '</div>' +
+                           '<div class="meeting-time">' + this.formatDate(nextEvent.startTime) + '</div>' +
+                           '<div class="meeting-time">' + this.formatTime(nextEvent.startTime) + ' - ' + this.formatTime(nextEvent.endTime) + '</div>';
+                } else {
+                    html += '<div class="meeting-title">No upcoming meetings</div>';
+                }
+                
+                html += '</div>' +
+                    '</div>' +
+                    '<div class="upcoming-events">';
+                
+                for (var i = 0; i < upcomingEvents.length; i++) {
+                    var event = upcomingEvents[i];
+                    if (event !== currentEvent && event !== nextEvent) {
+                        html += '<div class="event-card">' +
+                               '<div class="event-title">' + event.title + '</div>' +
+                               '<div class="event-date">' + this.formatDate(event.startTime) + '</div>' +
+                               '<div class="event-time">' + this.formatTime(event.startTime) + ' - ' + this.formatTime(event.endTime) + '</div>' +
+                               '</div>';
+                    }
+                }
+                
+                html += '</div>';
+                
+                document.getElementById('app').innerHTML = html;
+            },
+            
+            showError: function(message) {
+                document.getElementById('app').innerHTML = 
+                    '<div class="error">' +
+                        '<h2>Error</h2>' +
+                        '<p>' + message + '</p>' +
+                        '<button class="refresh-button" onclick="window.location.reload()">Refresh</button>' +
+                    '</div>';
+            },
+            
+            setupPeriodicRefresh: function() {
+                var self = this;
+                setInterval(function() {
+                    self.fetchEvents();
+                }, 5 * 60 * 1000); // Refresh every 5 minutes
+            }
+        };
+        
+        // Initialize the app when the page loads
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function() {
+                app.init();
+            });
+        } else {
+            app.init();
+        }
+    </script>
+</body>
+</html>

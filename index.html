@@ -7,15 +7,51 @@
     <title>viewFMX</title>
     <!-- Add polyfills for older browsers -->
     <script>
-      // Basic polyfills for older Safari
+      // Basic polyfills for older Safari (iOS 9.3.5)
+      
+      // Promise polyfill
       if (!window.Promise) {
         document.write('<script src="https://cdn.jsdelivr.net/npm/es6-promise@4/dist/es6-promise.auto.min.js"><\/script>');
       }
+      
+      // Fetch polyfill
+      if (!window.fetch) {
+        document.write('<script src="https://cdn.jsdelivr.net/npm/whatwg-fetch@3.6.2/dist/fetch.umd.js"><\/script>');
+      }
+      
+      // Array.prototype.includes
       if (!Array.prototype.includes) {
         Array.prototype.includes = function(searchElement) {
           return this.indexOf(searchElement) !== -1;
         };
       }
+      
+      // Array.prototype.find
+      if (!Array.prototype.find) {
+        Array.prototype.find = function(predicate) {
+          for (var i = 0; i < this.length; i++) {
+            if (predicate(this[i], i, this)) {
+              return this[i];
+            }
+          }
+          return undefined;
+        };
+      }
+      
+      // Array.prototype.filter (ensure it exists)
+      if (!Array.prototype.filter) {
+        Array.prototype.filter = function(callback) {
+          var result = [];
+          for (var i = 0; i < this.length; i++) {
+            if (callback(this[i], i, this)) {
+              result.push(this[i]);
+            }
+          }
+          return result;
+        };
+      }
+      
+      // Object.assign
       if (!Object.assign) {
         Object.assign = function(target) {
           for (var i = 1; i < arguments.length; i++) {
@@ -29,6 +65,55 @@
           return target;
         };
       }
+      
+      // String.prototype.includes
+      if (!String.prototype.includes) {
+        String.prototype.includes = function(search, start) {
+          if (typeof start !== 'number') {
+            start = 0;
+          }
+          if (start + search.length > this.length) {
+            return false;
+          } else {
+            return this.indexOf(search, start) !== -1;
+          }
+        };
+      }
+      
+      // String.prototype.startsWith
+      if (!String.prototype.startsWith) {
+        String.prototype.startsWith = function(searchString, position) {
+          position = position || 0;
+          return this.substr(position, searchString.length) === searchString;
+        };
+      }
+      
+      // String.prototype.endsWith
+      if (!String.prototype.endsWith) {
+        String.prototype.endsWith = function(searchString, length) {
+          if (length === undefined || length > this.length) {
+            length = this.length;
+          }
+          return this.substring(length - searchString.length, length) === searchString;
+        };
+      }
+      
+      // Number.isNaN
+      if (!Number.isNaN) {
+        Number.isNaN = function(value) {
+          return typeof value === 'number' && isNaN(value);
+        };
+      }
+      
+      // Console polyfill for very old browsers
+      if (!window.console) {
+        window.console = {
+          log: function() {},
+          error: function() {},
+          warn: function() {},
+          info: function() {}
+        };
+      }
     </script>
   </head>
   <body>
@@ -39,18 +124,20 @@
         <p>This application requires JavaScript to run. Please enable JavaScript in your browser.</p>
       </div>
     </noscript>
-    <!-- Fallback for browsers that don't support ES modules -->
-    <script>
-      if (!('noModule' in HTMLScriptElement.prototype)) {
-        // Browser doesn't support ES modules, show compatibility message
-        document.getElementById('root').innerHTML = 
-          '<div style="text-align: center; padding: 50px; font-family: Arial, sans-serif;">' +
-          '<h2>Browser Not Supported</h2>' +
-          '<p>This application requires a modern browser. Please update your browser or try a different one.</p>' +
-          '<p>Supported browsers: Safari 10+, Chrome 61+, Firefox 60+, Edge 16+</p>' +
-          '</div>';
-      }
-    </script>
+    
+    <!-- Vite entry point -->
     <script type="module" src="/src/main.jsx"></script>
+    
+    <!-- Temporary fallback: redirect to iOS 9 compatible version -->
+    <script>
+      // Check if the page loads properly, if not redirect to iOS 9 version
+      setTimeout(function() {
+        var root = document.getElementById('root');
+        if (!root || !root.innerHTML || root.innerHTML.trim() === '') {
+          console.log('Main app failed to load, redirecting to iOS 9 compatible version');
+          window.location.href = '/ios9' + window.location.search;
+        }
+      }, 2000);
+    </script>
   </body>
 </html>

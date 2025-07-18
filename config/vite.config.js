@@ -24,7 +24,7 @@ export default defineConfig({
   build: {
     outDir: path.resolve(__dirname, '../dist'),
     sourcemap: true,
-    target: 'es2015',
+    // Remove problematic build options that were causing empty builds
     rollupOptions: {
       output: {
         manualChunks: undefined,

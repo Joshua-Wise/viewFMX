@@ -1,5 +1,5 @@
 import React from 'react';
-import ReactDOM from 'react-dom/client';
+import ReactDOM from 'react-dom';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import './index.css';
@@ -62,39 +62,24 @@ class ErrorBoundary extends React.Component {
 
 // Check for compatibility and render
 try {
-  const root = document.getElementById('root');
+  var root = document.getElementById('root');
   if (!root) {
     throw new Error('Root element not found');
   }
 
-  // Check if createRoot is available (React 18+)
-  if (ReactDOM.createRoot) {
-    ReactDOM.createRoot(root).render(
-      React.createElement(React.StrictMode, null,
-        React.createElement(ErrorBoundary, null,
-          React.createElement(BrowserRouter, null,
-            React.createElement(App, null)
-          )
-        )
+  // Use legacy ReactDOM.render for better compatibility
+  ReactDOM.render(
+    React.createElement(ErrorBoundary, null,
+      React.createElement(BrowserRouter, null,
+        React.createElement(App, null)
       )
-    );
-  } else {
-    // Fallback for older React versions
-    ReactDOM.render(
-      React.createElement(React.StrictMode, null,
-        React.createElement(ErrorBoundary, null,
-          React.createElement(BrowserRouter, null,
-            React.createElement(App, null)
-          )
-        )
-      ),
-      root
-    );
-  }
+    ),
+    root
+  );
 } catch (error) {
   console.error('Failed to render application:', error);
   // Fallback rendering
-  const root = document.getElementById('root');
+  var root = document.getElementById('root');
   if (root) {
     root.innerHTML = 
       '<div style="text-align: center; padding: 50px; font-family: Arial, sans-serif;">' +
