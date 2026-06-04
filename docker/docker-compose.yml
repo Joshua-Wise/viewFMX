@@ -1,6 +1,19 @@
 version: '3.8'
 services:
+  api-server:
+    build:
+      context: ../api-server
+      dockerfile: Dockerfile
+    environment:
+      - GOFMX_TOKEN=${GOFMX_TOKEN}
+      - GOFMX_API_BASE=${NGINX_PROXY_PASS}
+      - VITE_GOFMX_STATUS=${VITE_GOFMX_STATUS}
+    expose:
+      - "3001"
+
   app:
+    depends_on:
+      - api-server
     build:
       context: ..
       dockerfile: docker/Dockerfile
