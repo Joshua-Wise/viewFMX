@@ -88,7 +88,7 @@ app.get('/device/v1/rooms/:resourceId/status', async (req, res) => {
       current_meeting: current
         ? {
             id: current.id,
-            title: current.isPrivate ? null : current.title,
+            title: current.title,
             is_private: current.isPrivate,
             start_time: current.startTime,
             end_time: current.endTime,
@@ -97,7 +97,7 @@ app.get('/device/v1/rooms/:resourceId/status', async (req, res) => {
         : null,
       upcoming_meetings: upcoming.map(e => ({
         id: e.id,
-        title: e.isPrivate ? null : e.title,
+        title: e.title,
         is_private: e.isPrivate,
         start_time: e.startTime,
         end_time: e.endTime,
