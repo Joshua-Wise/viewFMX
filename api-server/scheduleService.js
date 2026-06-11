@@ -198,7 +198,20 @@ function transformScheduleData(data) {
     }
   }
 
-  return transformed.sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
+  // A recurring event whose first occurrence is still in the future emits
+  // both `_original` and `_next` with identical times; collapse any
+  // duplicate (event, startTime) pairs. Key on the parsed timestamp:
+  // `_original` keeps GoFMX's string ("...00Z") while computed occurrences
+  // are toISOString() ("...00.000Z"), so string keys would not match.
+  const seen = new Set();
+  const deduped = transformed.filter(e => {
+    const key = `${e.id.split('_')[0]}|${new Date(e.startTime).getTime()}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  return deduped.sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
 }
 
 function getCurrentEvent(events) {
@@ -208,9 +221,12 @@ function getCurrentEvent(events) {
 
 function getUpcomingEvents(events, currentEvent, count) {
   const now = new Date();
+  // Match the web app: only show one week of upcoming events.
+  const weekOut = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
   return events
     .filter(e => {
       if (currentEvent && e.id === currentEvent.id) return false;
+      if (new Date(e.startTime) > weekOut) return false;
       if (e.frequency && e.frequency !== 'Never') return new Date(e.startTime) > now;
       return now < new Date(e.endTime);
     })
