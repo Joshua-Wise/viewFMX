@@ -1,10 +1,30 @@
 'use strict';
 
 const express = require('express');
+const rateLimit = require('express-rate-limit');
 const { transformScheduleData, getCurrentEvent, getUpcomingEvents } = require('./scheduleService');
 
 const app = express();
 app.use(express.json());
+
+// Trust the nginx reverse proxy so rate limiting uses the real client IP
+app.set('trust proxy', 1);
+
+const statusLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests, please try again later' },
+});
+
+const bookLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many booking attempts, please try again later' },
+});
 
 const GOFMX_BASE = (process.env.GOFMX_API_BASE || '').replace(/\/+$/, '');
 const GOFMX_TOKEN = process.env.GOFMX_TOKEN || '';
@@ -39,7 +59,7 @@ async function gofmxPost(path, body) {
 }
 
 // GET /device/v1/rooms/:resourceId/status?buildingId=<id>[&count=<n>]
-app.get('/device/v1/rooms/:resourceId/status', async (req, res) => {
+app.get('/device/v1/rooms/:resourceId/status', statusLimiter, async (req, res) => {
   const { resourceId } = req.params;
   const buildingId = req.query.buildingId;
   const count = Math.min(parseInt(req.query.count || '5', 10), 20);
@@ -112,7 +132,7 @@ app.get('/device/v1/rooms/:resourceId/status', async (req, res) => {
 
 // POST /device/v1/rooms/:resourceId/book
 // Body: { "building_id": "123", "duration_minutes": 30 }
-app.post('/device/v1/rooms/:resourceId/book', async (req, res) => {
+app.post('/device/v1/rooms/:resourceId/book', bookLimiter, async (req, res) => {
   const { resourceId } = req.params;
   const { building_id: buildingId, duration_minutes: durationMinutes } = req.body;
 
