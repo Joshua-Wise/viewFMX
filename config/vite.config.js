@@ -13,17 +13,9 @@ export default defineConfig({
       '@': path.resolve(__dirname, '../src'),
     },
   },
-  define: {
-        // Make env variables available
-        'process.env': process.env,
-        // Explicitly define VITE_ variables
-        'import.meta.env.VITE_API_BASE_URL': JSON.stringify(process.env.VITE_API_BASE_URL),
-        'import.meta.env.VITE_GOFMX_TOKEN': JSON.stringify(process.env.VITE_GOFMX_TOKEN),
-        'import.meta.env.VITE_GOFMX_STATUS': JSON.stringify(process.env.VITE_GOFMX_STATUS)
-  },
   build: {
     outDir: path.resolve(__dirname, '../dist'),
-    sourcemap: true,
+    sourcemap: false,
     // Remove problematic build options that were causing empty builds
     rollupOptions: {
       output: {
