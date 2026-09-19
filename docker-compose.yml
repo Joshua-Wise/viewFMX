@@ -35,7 +35,8 @@ services:
     depends_on:
       - api-server
     ports:
-      - "${UI_PORT:-3000}:80"
+      # 3000 is taken by the openspeedtest stack on the Arcane host.
+      - "${UI_PORT:-3030}:80"
     env_file: .env
     environment:
       - GOFMX_TOKEN=${GOFMX_TOKEN}

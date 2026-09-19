@@ -38,7 +38,7 @@ On a host Arcane does not manage, you only need `docker-compose.yml` and a
 cp .env.example .env      # fill in your real FMX token and domain
 docker compose pull
 docker compose up -d
-# → http://your-ip:3000   (UI_PORT in .env changes the host port)
+# → http://your-ip:3030   (UI_PORT in .env changes the host port)
 ```
 
 The images are private by default, so `docker compose pull` needs a GHCR login
@@ -60,7 +60,7 @@ fill in:
 GOFMX_TOKEN=your_token
 NGINX_PROXY_PASS=https://your-domain.gofmx.com/api/v1/
 NGINX_PROXY_HOST=your-domain.gofmx.com
-UI_PORT=3000
+UI_PORT=3030
 ```
 
 `GOFMX_TOKEN`, `NGINX_PROXY_PASS` and `NGINX_PROXY_HOST` are read at container
@@ -87,14 +87,14 @@ npm run dev
 
 ## Access & Use
 
-Visit your-ip:3000 in a web browser | select building and resource
+Visit your-ip:3030 in a web browser | select building and resource
 
 ### iOS 9.3.5 Compatibility
 
 For older iPads running iOS 9.3.5 that show "Browser not supported" errors, use the legacy-compatible version:
 
-- **Modern browsers**: `http://your-ip:3000/` (default)
-- **iOS 9.3.5 and older**: `http://your-ip:3000/ios9`
+- **Modern browsers**: `http://your-ip:3030/` (default)
+- **iOS 9.3.5 and older**: `http://your-ip:3030/ios9`
 
 The iOS 9 compatible version provides the same functionality using vanilla JavaScript and polyfills. See [iOS9_COMPATIBILITY.md](iOS9_COMPATIBILITY.md) for detailed information.
 
