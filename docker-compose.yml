@@ -1,0 +1,47 @@
+# Deployed by Arcane, which syncs this repo. The image tags below are rewritten
+# to the new commit SHA by .github/workflows/build.yml, so those lines are the
+# deployed version — do not edit them by hand except to roll back to an older
+# SHA tag.
+#
+# Compose derives the project name (and therefore container names) from the
+# directory it runs in unless told otherwise. This file used to live in
+# docker/, which is why containers came up as "docker-app-1". The explicit
+# name + container_name below pin the names regardless of checkout path.
+name: viewfmx
+
+services:
+  # Express service backing /device/v1/ for the ESP32 / embedded clients.
+  # Not published on the host: only the ui container reaches it, over the
+  # compose network, by its service name.
+  api-server:
+    image: ghcr.io/joshua-wise/viewfmx-api:latest
+    container_name: viewfmx-api
+    expose:
+      - "3001"
+    environment:
+      - GOFMX_TOKEN=${GOFMX_TOKEN}
+      # server.js reads GOFMX_API_BASE; .env spells the same URL
+      # NGINX_PROXY_PASS for the nginx side.
+      - GOFMX_API_BASE=${NGINX_PROXY_PASS}
+      - VITE_GOFMX_STATUS=${VITE_GOFMX_STATUS:-FinalizedUpcoming}
+    restart: unless-stopped
+
+  # nginx serving the compiled SPA, proxying /api/v1/ to FMX and /device/v1/
+  # to api-server. GOFMX_TOKEN is substituted into nginx.conf at container
+  # start by docker/docker-entrypoint.sh, never baked into the image.
+  ui:
+    image: ghcr.io/joshua-wise/viewfmx:latest
+    container_name: viewfmx-ui
+    depends_on:
+      - api-server
+    ports:
+      - "${UI_PORT:-3000}:80"
+    env_file: .env
+    environment:
+      - GOFMX_TOKEN=${GOFMX_TOKEN}
+      - NGINX_PROXY_PASS=${NGINX_PROXY_PASS}
+      - NGINX_PROXY_HOST=${NGINX_PROXY_HOST}
+    restart: unless-stopped
+
+# No volumes: both containers are stateless. Nothing is bind-mounted from the
+# repo directory, so the deploy carries no host paths.
