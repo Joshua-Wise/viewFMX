@@ -10,6 +10,12 @@ app.use(express.json());
 // Trust the nginx reverse proxy so rate limiting uses the real client IP
 app.set('trust proxy', 1);
 
+// Liveness probe for the container HEALTHCHECK. Deliberately unauthenticated,
+// unthrottled and independent of GoFMX: it answers "this process is serving",
+// not "the upstream is reachable", so a GoFMX outage cannot make Docker kill
+// an otherwise healthy container.
+app.get('/healthz', (_req, res) => res.json({ status: 'ok' }));
+
 const statusLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 120,

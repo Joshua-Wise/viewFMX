@@ -1,63 +1,88 @@
-name: build
+name: Build and publish images
 
-# Builds the two viewFMX images (SPA/nginx + api-server), pushes them to
-# GHCR, then pins docker-compose.yml to the new tag. Arcane syncs this repo,
-# so the committed tag IS the deployed version — the bump commit is the deploy.
+# viewFMX ships two images from one repository:
+#   ghcr.io/joshua-wise/viewfmx      nginx serving the built SPA
+#   ghcr.io/joshua-wise/viewfmx-api  the Express /device/v1/ service
+#
+# Both are tagged with the immutable sha-<short> tag for this commit, and the
+# last step pins docker-compose.yml to that tag. Arcane's GitOps sync polls
+# this repository every 5 minutes and redeploys when the commit changes, so
+# that pin commit is what actually deploys.
 on:
   push:
     branches: [main]
     paths-ignore:
-      # The last step of this workflow commits docker-compose.yml. Without
-      # this the bump commit would retrigger the build, forever.
-      - 'docker-compose.yml'
-      - 'README.md'
-      - 'LICENSE'
-      - 'screenshots/**'
+      # The pin step below commits docker-compose.yml. Ignoring it here is the
+      # structural guard against this workflow retriggering itself; the
+      # skip-ci marker in that commit message is only a backstop.
+      - "docker-compose.yml"
+      - "README.md"
+      - "LICENSE"
+      - "screenshots/**"
   workflow_dispatch:
 
-# contents: write → commit the tag bump back to main
-# packages: write → push to ghcr.io
-permissions:
-  contents: write
-  packages: write
-
+# Serialize builds on main so two runs cannot race to pin the compose file.
 concurrency:
-  # Serialize: two builds racing to commit docker-compose.yml would conflict.
-  group: build-${{ github.ref }}
+  group: publish-${{ github.ref }}
   cancel-in-progress: false
 
 env:
-  # GHCR rejects uppercase path segments; the owner is "Joshua-Wise".
-  IMAGE_UI: ghcr.io/joshua-wise/viewfmx
-  IMAGE_API: ghcr.io/joshua-wise/viewfmx-api
+  REGISTRY: ghcr.io
 
 jobs:
-  build:
+  publish:
+    name: Build and push
     runs-on: ubuntu-latest
+    permissions:
+      # contents: write so the pin step can commit docker-compose.yml.
+      contents: write
+      packages: write
     steps:
-      # Default ref (the pushed commit) is deliberate: the images must contain
-      # exactly the code that GITHUB_SHA names, since that SHA becomes the tag.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - name: Compute short SHA
-        id: vars
-        run: echo "sha=$(git rev-parse --short=12 HEAD)" >> "$GITHUB_OUTPUT"
+      # GHCR rejects uppercase image paths and this repository name has some.
+      - name: Derive the lowercase image name
+        id: image
+        run: |
+          echo "ui=${GITHUB_REPOSITORY,,}"      >> "$GITHUB_OUTPUT"
+          echo "api=${GITHUB_REPOSITORY,,}-api" >> "$GITHUB_OUTPUT"
 
       - uses: docker/setup-buildx-action@v3
 
-      - uses: docker/login-action@v3
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
         with:
-          registry: ghcr.io
+          registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # VITE_* values are compiled into the SPA bundle at build time, so they
-      # cannot come from the deployed .env. They are non-secret (a URL path and
-      # a status filter), so a repository *variable* is the right home; the
-      # fallbacks match the defaults in src/services/gofmxService.js.
-      # GOFMX_TOKEN is deliberately NOT here — it stays runtime-only, injected
-      # into nginx.conf by docker/docker-entrypoint.sh.
-      - name: Build and push UI image
+      # metadata-action emits both the sha-<short> tag and the OCI labels,
+      # including org.opencontainers.image.revision. That label is how a
+      # running container can be traced back to the commit that built it.
+      - name: Derive tags and labels for the UI image
+        id: meta_ui
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ steps.image.outputs.ui }}
+          tags: |
+            type=sha,format=short
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Derive tags and labels for the API image
+        id: meta_api
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ steps.image.outputs.api }}
+          tags: |
+            type=sha,format=short
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      # The VITE_* values are compiled into the SPA bundle, so they cannot come
+      # from the deployed .env. They are non-secret (a URL path and a status
+      # filter); the fallbacks match the defaults in src/services/gofmxService.js.
+      # GOFMX_TOKEN is deliberately absent — it stays runtime-only, injected
+      # into nginx.conf by docker/docker-entrypoint.sh at container start.
+      - name: Build and push the UI image
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -66,42 +91,72 @@ jobs:
           build-args: |
             VITE_API_BASE_URL=${{ vars.VITE_API_BASE_URL || '/api/v1' }}
             VITE_GOFMX_STATUS=${{ vars.VITE_GOFMX_STATUS || 'FinalizedUpcoming' }}
-          tags: |
-            ${{ env.IMAGE_UI }}:${{ steps.vars.outputs.sha }}
-            ${{ env.IMAGE_UI }}:latest
+          tags: ${{ steps.meta_ui.outputs.tags }}
+          labels: ${{ steps.meta_ui.outputs.labels }}
           cache-from: type=gha,scope=ui
           cache-to: type=gha,mode=max,scope=ui
           provenance: false
 
-      - name: Build and push API image
+      - name: Build and push the API image
         uses: docker/build-push-action@v6
         with:
           context: ./api-server
           file: ./api-server/Dockerfile
           push: true
-          tags: |
-            ${{ env.IMAGE_API }}:${{ steps.vars.outputs.sha }}
-            ${{ env.IMAGE_API }}:latest
+          tags: ${{ steps.meta_api.outputs.tags }}
+          labels: ${{ steps.meta_api.outputs.labels }}
           cache-from: type=gha,scope=api
           cache-to: type=gha,mode=max,scope=api
           provenance: false
 
-      - name: Pin docker-compose.yml to the new tag
+      # Pin docker-compose.yml to the immutable tags just pushed.
+      #
+      # This is what actually deploys. Arcane's GitOps sync acts on commit
+      # changes, but a code change is an image change: the sync fires while the
+      # image is still building, sees an unchanged compose file, and no-ops.
+      # Committing the tag *after* the push inverts that — the commit cannot
+      # exist before the image does, so there is no race left to lose.
+      #
+      # sed rather than yq: yq rewrites the whole document and would strip the
+      # comments that explain this file. Each substitution is asserted, because
+      # a silently unmatched sed leaves the file unchanged and would otherwise
+      # look identical to "already pinned".
+      - name: Pin the compose file to these images
         env:
-          SHA: ${{ steps.vars.outputs.sha }}
+          IMAGE_UI: ${{ env.REGISTRY }}/${{ steps.image.outputs.ui }}
+          IMAGE_API: ${{ env.REGISTRY }}/${{ steps.image.outputs.api }}
         run: |
           set -euo pipefail
-          sed -i -E "s|^(\s*image:\s*)${IMAGE_UI}:.*$|\1${IMAGE_UI}:${SHA}|" docker-compose.yml
-          sed -i -E "s|^(\s*image:\s*)${IMAGE_API}:.*$|\1${IMAGE_API}:${SHA}|" docker-compose.yml
+          TAG="sha-${GITHUB_SHA::7}"
+
+          # The UI pattern requires the ':' immediately after the image name,
+          # so it cannot also match the longer viewfmx-api line.
+          sed -i -E "s|(image: ${IMAGE_UI}:)[A-Za-z0-9._-]+|\1${TAG}|"  docker-compose.yml
+          sed -i -E "s|(image: ${IMAGE_API}:)[A-Za-z0-9._-]+|\1${TAG}|" docker-compose.yml
+
+          for ref in "${IMAGE_UI}:${TAG}" "${IMAGE_API}:${TAG}"; do
+            grep -q "image: ${ref}" docker-compose.yml \
+              || { echo "::error::compose image line did not match for ${ref}; pin failed"; exit 1; }
+          done
+
           if git diff --quiet -- docker-compose.yml; then
-            echo "docker-compose.yml already pinned to ${SHA}; nothing to commit"
+            echo "Already pinned to ${TAG}; nothing to commit."
             exit 0
           fi
-          grep -n "ghcr.io/joshua-wise/viewfmx" docker-compose.yml
+
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add docker-compose.yml
-          git commit -m "deploy: viewfmx:${SHA} [skip ci]"
-          # Another push may have landed while the images built.
-          git pull --rebase --autostash origin main
-          git push origin HEAD:main
+          # The skip-ci marker stops this commit from triggering another build;
+          # without it the new sha would pin again, forever. paths-ignore above
+          # is the structural backstop, since this commit only ever touches
+          # docker-compose.yml.
+          #
+          # Careful: GitHub scans the whole commit message for that marker, so
+          # never write it literally in a hand-written commit message — it
+          # silently skips that build. (It has, on this repository.)
+          git commit -m "deploy: ${TAG} [skip ci]"
+
+          git pull --rebase --autostash origin "${GITHUB_REF_NAME}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+          echo "Pinned docker-compose.yml to ${TAG}"

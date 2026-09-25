@@ -45,4 +45,10 @@ RUN chown -R nginx:nginx /usr/share/nginx/html && \
 
 EXPOSE 80
 
+# Lets Arcane report this container as healthy rather than merely running, and
+# makes a crash-looping nginx visible as unhealthy instead of silently up.
+# busybox wget ships in nginx:alpine, so this needs no extra packages.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD wget -q --spider http://127.0.0.1/ || exit 1
+
 CMD ["/docker-entrypoint.sh"]
