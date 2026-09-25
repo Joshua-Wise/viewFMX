@@ -14,7 +14,7 @@ services:
   # Not published on the host: only the ui container reaches it, over the
   # compose network, by its service name.
   api-server:
-    image: ghcr.io/joshua-wise/viewfmx-api:a8b73e0cf7a5
+    image: ghcr.io/joshua-wise/viewfmx-api:sha-c684332
     container_name: viewfmx-api
     expose:
       - "3001"
@@ -30,7 +30,7 @@ services:
   # to api-server. GOFMX_TOKEN is substituted into nginx.conf at container
   # start by docker/docker-entrypoint.sh, never baked into the image.
   ui:
-    image: ghcr.io/joshua-wise/viewfmx:a8b73e0cf7a5
+    image: ghcr.io/joshua-wise/viewfmx:sha-c684332
     container_name: viewfmx-ui
     depends_on:
       - api-server
