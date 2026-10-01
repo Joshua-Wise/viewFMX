@@ -73,6 +73,19 @@ this repo's **Settings → Secrets and variables → Actions → Variables**, no
 (`/api/v1` and `FinalizedUpcoming`) when unset, so you only need to add them if
 you want different values.
 
+### Custom logo
+
+To use your own logo, put a file named `logo.png` (or `logo.svg`, `logo.jpg`,
+`logo.jpeg`, `logo.webp`) in `/opt/viewfmx/branding` on the Docker host. When
+nginx finds one there, it serves it at `/logo.png` in place of the bundled
+viewFMX logo. If it finds none, the bundled logo is used. The directory lives
+outside the repo and the image and is mounted read-only, so updating the
+project or pulling a new image won't replace your logo. A new or changed logo
+shows up on the next page load, with no restart needed.
+
+To use a different directory, set `CUSTOM_LOGO_DIR` in `.env` to another
+absolute host path.
+
 ## Development
 
 Requires Node.js v16+ and FMX API access.

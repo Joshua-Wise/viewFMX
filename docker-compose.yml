@@ -42,7 +42,15 @@ services:
       - GOFMX_TOKEN=${GOFMX_TOKEN}
       - NGINX_PROXY_PASS=${NGINX_PROXY_PASS}
       - NGINX_PROXY_HOST=${NGINX_PROXY_HOST}
+    volumes:
+      # Optional custom logo. A logo.png (or .svg/.jpg/.jpeg/.webp) in this
+      # directory is served at /logo.png instead of the bundled one; with the
+      # directory empty or absent, the bundled logo is used. Absolute on
+      # purpose: Arcane runs compose from inside its own container, where a
+      # relative path would not resolve to the host, and its Git Sync owns
+      # /opt/stacks/viewfmx. Override with CUSTOM_LOGO_DIR in .env.
+      - ${CUSTOM_LOGO_DIR:-/opt/viewfmx/branding}:/usr/share/nginx/html/custom:ro
     restart: unless-stopped
 
-# No volumes: both containers are stateless. Nothing is bind-mounted from the
-# repo directory, so the deploy carries no host paths.
+# Both containers are otherwise stateless; the branding mount above is the
+# only volume.
