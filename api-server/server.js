@@ -50,17 +50,27 @@ function gofmxHeaders() {
   };
 }
 
+// GoFMX explains rejections (e.g. a 400 validation failure) in the response
+// body; keep it on the error so the reason reaches the logs, not just the code.
+async function gofmxError(res) {
+  const detail = (await res.text().catch(() => '')).slice(0, 1000);
+  return Object.assign(new Error(`GoFMX ${res.status}${detail ? `: ${detail}` : ''}`), {
+    status: res.status,
+    detail,
+  });
+}
+
 async function gofmxGet(path) {
   const url = `${GOFMX_BASE}/${path.replace(/^\//, '')}`;
   const res = await fetch(url, { headers: gofmxHeaders() });
-  if (!res.ok) throw Object.assign(new Error(`GoFMX ${res.status}`), { status: res.status });
+  if (!res.ok) throw await gofmxError(res);
   return res.json();
 }
 
 async function gofmxPost(path, body) {
   const url = `${GOFMX_BASE}/${path.replace(/^\//, '')}`;
   const res = await fetch(url, { method: 'POST', headers: gofmxHeaders(), body: JSON.stringify(body) });
-  if (!res.ok) throw Object.assign(new Error(`GoFMX ${res.status}`), { status: res.status });
+  if (!res.ok) throw await gofmxError(res);
   return res.json();
 }
 
@@ -194,6 +204,9 @@ app.post('/device/v1/rooms/:resourceId/book', bookLimiter, async (req, res) => {
     console.error('POST book error:', err);
     if (err.status === 409) {
       return res.status(409).json({ success: false, error: 'Room is not available for the requested duration' });
+    }
+    if (err.status === 400) {
+      return res.status(502).json({ success: false, error: 'GoFMX rejected the booking', detail: err.detail });
     }
     const status = err.status === 401 || err.status === 403 ? 502 : 500;
     res.status(status).json({ success: false, error: err.message });

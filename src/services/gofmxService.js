@@ -83,7 +83,10 @@ class GoFMXService {
           throw new Error('Server error. Please try again later.');
         }
         
-        throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+        // Surface the upstream's reason (e.g. a GoFMX validation message) on screen,
+        // since kiosk devices have no console to read errorText from.
+        const detail = errorText ? ` - ${errorText.slice(0, 200)}` : '';
+        throw new Error(`API request failed: ${response.status} ${response.statusText}${detail}`);
       }
 
       // Record success in health check
@@ -536,11 +539,6 @@ class GoFMXService {
           {
             customFieldID: 593550,
             name: "002: Facility Resources",
-            value: "No"
-          },
-          {
-            customFieldID: 593873,
-            name: "Additional Details",
             value: "No"
           }
         ]
