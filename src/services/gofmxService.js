@@ -540,6 +540,26 @@ class GoFMXService {
             customFieldID: 593550,
             name: "002: Facility Resources",
             value: "No"
+          },
+          {
+            customFieldID: 593551,
+            name: "003: Tables (Rectangle)",
+            value: "0"
+          },
+          {
+            customFieldID: 595110,
+            name: "003: Tables (Round)",
+            value: "0"
+          },
+          {
+            customFieldID: 595105,
+            name: "016: Security",
+            value: "No"
+          },
+          {
+            customFieldID: 595108,
+            name: "016: Custodial",
+            value: "No"
           }
         ]
       };
