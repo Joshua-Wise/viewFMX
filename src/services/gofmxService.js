@@ -502,7 +502,7 @@ class GoFMXService {
 
       const requestData = {
         name: "Quick Meeting",
-        requestTypeID: 295769,
+        requestTypeID: 306036,
         buildingIDs: [parseInt(buildingId)],
         resourceQuantities: [
           {
@@ -520,48 +520,7 @@ class GoFMXService {
           endTimeUtc: endTime.toISOString()
         },
         isPrivate: true,
-        customFields: [
-          {
-            customFieldID: 585349,
-            name: "00: Number of Attendees",
-            value: 1
-          },
-          {
-            customFieldID: 593873,
-            name: "Additional Details",
-            value: "No"
-          },
-          {
-            customFieldID: 587658,
-            name: "03. Technology Resources",
-            value: "No"
-          },
-          {
-            customFieldID: 593550,
-            name: "002: Facility Resources",
-            value: "No"
-          },
-          {
-            customFieldID: 593551,
-            name: "003: Tables (Rectangle)",
-            value: "0"
-          },
-          {
-            customFieldID: 595110,
-            name: "003: Tables (Round)",
-            value: "0"
-          },
-          {
-            customFieldID: 595105,
-            name: "016: Security",
-            value: "No"
-          },
-          {
-            customFieldID: 595108,
-            name: "016: Custodial",
-            value: "No"
-          }
-        ]
+        customFields: []
       };
 
       const endpoint = 'scheduling/requests?conflictResolutionMode=ExcludeConflicts';

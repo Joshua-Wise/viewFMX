@@ -167,7 +167,7 @@ app.post('/device/v1/rooms/:resourceId/book', bookLimiter, async (req, res) => {
 
     const body = {
       name: 'Quick Meeting',
-      requestTypeID: 295769,
+      requestTypeID: 306036,
       buildingIDs: [parseInt(buildingId, 10)],
       resourceQuantities: [{ resourceID: parseInt(resourceId, 10) }],
       schedule: {
@@ -181,16 +181,7 @@ app.post('/device/v1/rooms/:resourceId/book', bookLimiter, async (req, res) => {
         endTimeUtc: endTime.toISOString(),
       },
       isPrivate: true,
-      customFields: [
-        { customFieldID: 585349, name: '00: Number of Attendees', value: 1 },
-        { customFieldID: 593873, name: 'Additional Details', value: 'No' },
-        { customFieldID: 587658, name: '03. Technology Resources', value: 'No' },
-        { customFieldID: 593550, name: '002: Facility Resources', value: 'No' },
-        { customFieldID: 593551, name: '003: Tables (Rectangle)', value: '0' },
-        { customFieldID: 595110, name: '003: Tables (Round)', value: '0' },
-        { customFieldID: 595105, name: '016: Security', value: 'No' },
-        { customFieldID: 595108, name: '016: Custodial', value: 'No' },
-      ],
+      customFields: [],
     };
 
     const result = await gofmxPost(
