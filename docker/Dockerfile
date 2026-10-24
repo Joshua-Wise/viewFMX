@@ -1,5 +1,5 @@
 # Build stage
-FROM node:18-alpine as build
+FROM node:24-alpine as build
 
 # Only VITE_* vars are needed at build time; secrets are runtime-only
 ARG VITE_GOFMX_STATUS
